@@ -1,0 +1,63 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// This strategy has been created for illustration purposes only and should not be relied upon as a basis for buying, selling, or holding any asset or security.
+//@version=6
+
+
+strategy(
+     "EMA Cross Strategy",
+     overlay=true,
+     calc_on_every_tick=true,
+     currency=currency.AUD
+     )
+
+// INPUT:
+if not timeframe.isweekly
+    runtime.error("Please use this script on a weekly chart.")
+
+
+// Options to enter fast and slow Exponential Moving Average (EMA) values
+emaFast = input.int(title="Fast EMA", defval=20, minval=1, maxval=9999)
+emaSlow = input.int(title="Slow EMA", defval=50, minval=1, maxval=9999)
+tradeDirection = input.string(title="Trade Direction", options=["Long", "Short", "Both"], defval="Long")
+startDate = input.time(title="Start Date", defval=timestamp("01 Jan 1970 00:00"))
+endDate = input.time(title="End Date", defval=timestamp("31 Dec 2170 23:59"))
+
+// CALCULATIONS:
+
+// CALCULATIONS:
+
+// Use the built-in function to calculate two EMA lines
+fastEMA = ta.ema(close, emaFast)
+slowEMA = ta.ema(close, emaSlow)
+
+
+// PLOT:
+
+// Draw the EMA lines on the chart
+plot(fastEMA, color=color.green, linewidth=2)
+plot(slowEMA, color=color.red, linewidth=2)
+
+
+// CONDITIONS:
+
+inDateRange = (time >= startDate) and (time < endDate)
+longOK  = (tradeDirection == "Long") or (tradeDirection == "Both")
+shortOK = (tradeDirection == "Short") or (tradeDirection == "Both")
+longCondition = ta.crossover(fastEMA, slowEMA)
+shortCondition = ta.crossunder(fastEMA, slowEMA)
+
+// ORDERS:
+
+// Submit entry (or reverse) orders
+if (longCondition and inDateRange and longOK)
+    strategy.entry("long", strategy.long)
+if (shortCondition and inDateRange and shortOK)
+    strategy.entry("short", strategy.short)
+
+    
+// Submit exit orders in the cases where we trade only long or only short
+if (strategy.position_size > 0 and shortCondition)
+    strategy.close("long")
+if (strategy.position_size < 0 and longCondition)
+    strategy.close("short")
+
