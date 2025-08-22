@@ -1,10 +1,9 @@
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 // Disclaimer:
-//The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
-//Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
+// The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
+// Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
 
 //@version=6
-
 
 strategy(
      "EMA Cross Strategy",
@@ -14,9 +13,8 @@ strategy(
      )
 
 // INPUT:
-if not timeframe.isweekly
-    runtime.error("Please use this script on a weekly chart.")
-
+// if not timeframe.isweekly
+//     runtime.error("Please use this script on a weekly chart.")
 
 // Options to enter fast and slow Exponential Moving Average (EMA) values
 emaFast = input.int(title="Fast EMA", defval=20, minval=1, maxval=9999)
@@ -27,19 +25,15 @@ endDate = input.time(title="End Date", defval=timestamp("31 Dec 2170 23:59"))
 
 // CALCULATIONS:
 
-// CALCULATIONS:
-
 // Use the built-in function to calculate two EMA lines
 fastEMA = ta.ema(close, emaFast)
 slowEMA = ta.ema(close, emaSlow)
 
-
 // PLOT:
 
 // Draw the EMA lines on the chart
-plot(fastEMA, color=color.green, linewidth=2)
-plot(slowEMA, color=color.red, linewidth=2)
-
+plot(fastEMA, color=color.green, linewidth=2, title="Fast EMA")
+plot(slowEMA, color=color.red, linewidth=2, title="Slow EMA")
 
 // CONDITIONS:
 
@@ -57,10 +51,117 @@ if (longCondition and inDateRange and longOK)
 if (shortCondition and inDateRange and shortOK)
     strategy.entry("short", strategy.short)
 
-    
 // Submit exit orders in the cases where we trade only long or only short
 if (strategy.position_size > 0 and shortCondition)
     strategy.close("long")
 if (strategy.position_size < 0 and longCondition)
     strategy.close("short")
 
+// --- Buy/Sell Count to 9 Indicator (integrated) ---
+
+// Inputs
+showFrom     = input.int(1, "Show numbers from", minval=1, maxval=9)
+showTo       = input.int(9, "Show numbers to", minval=1, maxval=9)
+sizeInput    = input.string("normal", "Numbers size", options=["tiny", "small", "normal", "large", "huge"])
+showLines    = input.bool(true, "Show support/resistance lines")
+
+// Color settings
+buyNumberColor  = input.color(color.red,  "Buy number color")
+sellNumberColor = input.color(color.teal, "Sell number color")
+buyLineColor    = input.color(color.red,  "Buy line color")
+sellLineColor   = input.color(color.teal, "Sell line color")
+
+// Helper function: Convert size string to label.size
+f_getSize(strSize) =>
+    switch strSize
+        "tiny"   => size.tiny
+        "small"  => size.small
+        "normal" => size.normal
+        "large"  => size.large
+        "huge"   => size.huge
+        => size.small
+
+labelSize = f_getSize(sizeInput)
+
+// Range check
+isInRange(val) =>
+    val >= showFrom and val <= showTo
+
+maxCount = 9
+barsBack = 4
+
+// Counters
+var int buyCount = 0
+var int sellCount = 0
+var int lastBuyCount = 0
+var int lastSellCount = 0
+
+buyCond  = close < close[barsBack]
+sellCond = close > close[barsBack]
+
+// Line references
+var line buyLine = na
+var line sellLine = na
+
+if barstate.isconfirmed
+    // Buy counter
+    if buyCond
+        if buyCount < maxCount
+            buyCount += 1
+    else
+        buyCount := 0
+
+    // Sell counter
+    if sellCond
+        if sellCount < maxCount
+            sellCount += 1
+    else
+        sellCount := 0
+
+    // Buy label (number only, no box)
+    if buyCount > 0 and isInRange(buyCount) and buyCount != lastBuyCount
+        label.new(bar_index, low * 0.999, text=str.tostring(buyCount),
+             style=label.style_label_center,
+             textcolor=buyNumberColor,
+             color=color.new(color.white, 100),
+             yloc=yloc.belowbar,
+             size=labelSize)
+        lastBuyCount := buyCount
+
+    // Sell label (number only, no box)
+    if sellCount > 0 and isInRange(sellCount) and sellCount != lastSellCount
+        label.new(bar_index, high * 1.001, text=str.tostring(sellCount),
+             style=label.style_label_center,
+             textcolor=sellNumberColor,
+             color=color.new(color.white, 100),
+             yloc=yloc.abovebar,
+             size=labelSize)
+        lastSellCount := sellCount
+
+    // Support line at Buy-9
+    if showLines
+        if buyCount == 9 and bar_index >= 2
+            if not na(buyLine)
+                line.delete(buyLine)
+            buyLine := line.new(bar_index - 2, close[2], bar_index, close[2], extend=extend.none, color=buyLineColor, width=2)
+
+        if not na(buyLine) and buyCount != 9
+            line.set_x2(buyLine, bar_index)
+            line.set_y2(buyLine, line.get_y1(buyLine))
+
+    // Resistance line at Sell-9
+    if showLines
+        if sellCount == 9 and bar_index >= 2
+            if not na(sellLine)
+                line.delete(sellLine)
+            sellLine := line.new(bar_index - 2, close[2], bar_index, close[2], extend=extend.none, color=sellLineColor, width=2)
+
+        if not na(sellLine) and sellCount != 9
+            line.set_x2(sellLine, bar_index)
+            line.set_y2(sellLine, line.get_y1(sellLine))
+
+    // Reset last values
+    if buyCount == 0
+        lastBuyCount := 0
+    if sellCount == 0
+        lastSellCount := 0
