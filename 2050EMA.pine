@@ -85,9 +85,10 @@ bb_upper = bb_basis + bb_dev
 bb_lower = bb_basis - bb_dev
 
 plot(bb_basis, "BB Basis", color=#2962FF, offset = bb_offset)
-bb_p1 = plot(bb_upper, "BB Upper", color=#F23645, offset = bb_offset)
-bb_p2 = plot(bb_lower, "BB Lower", color=#089981, offset = bb_offset)
-//fill(bb_p1, bb_p2, title = "BB Background", color=color.rgb(33, 150, 243, 95))
+bb_p1 = plot(bb_upper, "BB Upper", color=color.yellow, offset = bb_offset)
+bb_p2 = plot(bb_lower, "BB Lower", color=color.yellow, offset = bb_offset)
+fill(bb_p2, bb_p1, title = "BB Background", color=color.rgb(91, 152, 212, 75))
+
 
 // Fill outer zones
 bgcolor(close >= bb_basis ? color.new(color.green, 85) : na)
