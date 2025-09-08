@@ -77,9 +77,7 @@ bb_ma(source, length, _type) =>
     switch _type
         "SMA" => ta.sma(source, length)
         "EMA" => ta.ema(source, length)
-        "SMMA (RMA)" => ta.rma(source, length)
-        "WMA" => ta.wma(source, length)
-        "VWMA" => ta.vwma(source, length)
+      
 
 bb_basis = bb_ma(bb_src, bb_length, bb_maType)
 bb_dev = bb_mult * ta.stdev(bb_src, bb_length)
