@@ -54,8 +54,10 @@ shortCondition = ta.crossunder(fastEMA, slowEMA)
 // Submit entry (or reverse) orders
 if (longCondition and inDateRange and longOK)
     strategy.entry("long", strategy.long)
+    alert("EMA 50 crossed above EMA 200 - Buy Signal!", alert.freq_once_per_bar_close)
 if (shortCondition and inDateRange and shortOK)
     strategy.entry("short", strategy.short)
+    alert("EMA 50 crossed below EMA 200 - Buy Signal!", alert.freq_once_per_bar_close)
 
     
 // Submit exit orders in the cases where we trade only long or only short
