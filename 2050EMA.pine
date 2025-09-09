@@ -48,6 +48,9 @@ longOK  = (tradeDirection == "Long") or (tradeDirection == "Both")
 shortOK = (tradeDirection == "Short") or (tradeDirection == "Both")
 longCondition = ta.crossover(fastEMA, slowEMA)
 shortCondition = ta.crossunder(fastEMA, slowEMA)
+// Highlight crossover
+plotshape(longCondition, title="Bullish Crossover", location=location.top, color=color.lime, style=shape.labelup, text="20>50 Bullish")
+plotshape(shortCondition, title="Bearish Crossover", location=location.bottom, color=color.rgb(230, 0, 0), style=shape.labelup, text="20<50 Bearish")
 
 // ORDERS:
 
