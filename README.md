@@ -6,6 +6,7 @@
 5. Copy and paste the code from 2050EMA.pine file into the editor box <img width="1676" height="759" alt="image" src="https://github.com/user-attachments/assets/d4b38f6b-00e3-4836-ba64-4816db88716f" />
 6. Save the script with name as 2050_EMA_CrossStrategy
 7. Click on Strategy Tester to view the result <img width="1676" height="759" alt="image" src="https://github.com/user-attachments/assets/0c18ded7-3633-4028-b752-1e9260548626" />
+<img width="2638" height="2070" alt="image" src="https://github.com/user-attachments/assets/81eb8d18-8b1f-4d4f-9741-70ee91c438d9" />
 
 
 ---------------------
