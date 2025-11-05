@@ -1,0 +1,80 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Disclaimer:
+//The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
+//Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
+
+//@version=6
+indicator("EMA Cross + Bollinger Bands", shorttitle="EMA+BB", overlay=true)
+// Combined indicator showing EMA crosses and Bollinger Bands
+//
+// Features:
+// - EMA crosses with signals
+// - Bollinger Bands overlay
+
+// === EMA Settings ===
+// User input: EMA lengths and source
+ema_01_len = input.int(9, 'Ema 1', minval=1)
+ema_02_len = input.int(20, 'Ema 2', minval=1)
+ema_03_len = input.int(50, 'Ema 3', minval=1)
+ema_04_len = input.int(150, 'Ema 4', minval=1)
+ema_src = input.source(close, title="Source")
+
+// === Bollinger Bands Settings ===
+bb_length = input.int(20, "BB Length", minval=1, group="Bollinger Bands")
+bb_mult = input.float(2.0, "BB StdDev", minval=0.001, maxval=50, group="Bollinger Bands")
+bb_maType = input.string("EMA", "BB EMA Type", options=["SMA", "EMA", "SMMA (RMA)", "WMA", "VWMA"], group="Bollinger Bands")
+bb_offset = input.int(0, "BB Offset", minval=-500, maxval=500, group="Bollinger Bands")
+
+// Bollinger Bands MA function
+bb_ma(source, length, _type) =>
+    switch _type
+        "SMA" => ta.sma(source, length)
+        "EMA" => ta.ema(source, length)
+        "SMMA (RMA)" => ta.rma(source, length)
+        "WMA" => ta.wma(source, length)
+        "VWMA" => ta.vwma(source, length)
+
+// Calculate EMA values
+ema_01 = ta.ema(ema_src, ema_01_len)
+ema_02 = ta.ema(ema_src, ema_02_len)
+ema_03 = ta.ema(ema_src, ema_03_len)
+ema_04 = ta.ema(ema_src, ema_04_len)
+
+// Plot EMAs on chart
+plot(ema_01, title='ema_01', color=color.green, style=plot.style_line, linewidth=1)
+plot(ema_02, title='ema_02', color=color.blue, style=plot.style_line, linewidth=2)
+
+plot(ema_03, title='ema_03', color=color.red, style=plot.style_line, linewidth=3)
+plot(ema_04, title='ema_04', color=color.yellow, style=plot.style_line, linewidth=4)
+
+
+// Detect crosses
+cross_01_up = ta.crossover(ema_01, ema_02)
+cross_01_down = ta.crossunder(ema_01, ema_02)
+// Draw cross marks at EMA level when cross occurs
+plot(cross_01_up or cross_01_down ? ema_01 : na, style=plot.style_cross, title="cross 01", linewidth=3, color=ema_01 > ema_02 ? color.green : color.red)
+// Draw cross with text at bottom of chart
+plotchar(cross_01_up or cross_01_down ? ema_01 : na, title="cross_01", char="x", location=location.top, color=ema_01 > ema_02 ? color.green : color.red, text="Cross 01", textcolor=ema_01 > ema_02 ? color.green : color.red)
+// Detect second pair of crosses
+cross_02_up = ta.crossover(ema_03, ema_04)
+cross_02_down = ta.crossunder(ema_03, ema_04)
+// Draw cross marks at EMA level when cross occurs
+plot(cross_02_up or cross_02_down ? ema_03 : na, style=plot.style_cross, title="cross 02", linewidth=3, color=ema_03 > ema_04 ? color.green : color.red)
+// Draw cross with text at bottom of chart
+plotchar(cross_02_up or cross_02_down ? ema_03 : na, title="cross_02", char="x", location=location.bottom, color=ema_03 > ema_04 ? color.green : color.red, text="Cross 02", textcolor=ema_03 > ema_04 ? color.green : color.red)
+
+// Alert conditions
+alertcondition(cross_01_up, title='cross_01_up', message='a simple script is not a reason to buy! ;)')
+alertcondition(cross_01_down, title='cross_01_down', message='a simple script is not a reason to sell! ;)')
+
+// === Bollinger Bands Calculations and Plotting ===
+bb_basis = bb_ma(ema_src, bb_length, bb_maType)
+bb_dev = bb_mult * ta.stdev(ema_src, bb_length)
+bb_upper = bb_basis + bb_dev
+bb_lower = bb_basis - bb_dev
+
+// Plot Bollinger Bands
+bb_basis_plot = plot(bb_basis, "BB Basis", color=color.green, offset=bb_offset, linewidth=1)
+bb_upper_plot = plot(bb_upper, "BB Upper", color=color.rgb(255, 255, 255, 100), offset=bb_offset, linewidth=1)
+bb_lower_plot = plot(bb_lower, "BB Lower", color=color.rgb(255, 255, 255, 100), offset=bb_offset, linewidth=1)
+fill(bb_upper_plot, bb_lower_plot, title="BB Background", color=color.rgb(33, 149, 243, 67))
