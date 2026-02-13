@@ -1,21 +1,21 @@
-//@version=4
-study("EMA Cross", overlay=true)
+//@version=6
+indicator("EMA Cross", overlay=true)
 // Simple EMA cross indicator with indication of crosses on the EMA line and at the chart bottom
 //
 // Messy but true!
 
 // User input: EMA lengths and source
-ema_01_len = input(9, title='Ema 1', step=1, type=input.integer)
-ema_02_len = input(20, title='Ema 2', step=1, type=input.integer)
-ema_03_len = input(50, title='Ema 3', step=1, type=input.integer)
-ema_04_len = input(158, title='Ema 4', step=1, type=input.integer)
-ema_src = input(title="Source", type=input.source, defval=close)
+ema_01_len = input.int(9, title='Ema 1', minval=1)
+ema_02_len = input.int(20, title='Ema 2', minval=1)
+ema_03_len = input.int(50, title='Ema 3', minval=1)
+ema_04_len = input.int(158, title='Ema 4', minval=1)
+ema_src = input.source(close, title="Source")
 
 // Calculate EMA values
-ema_01 = ema(ema_src, ema_01_len)
-ema_02 = ema(ema_src, ema_02_len)
-ema_03 = ema(ema_src, ema_03_len)
-ema_04 = ema(ema_src, ema_04_len)
+ema_01 = ta.ema(ema_src, ema_01_len)
+ema_02 = ta.ema(ema_src, ema_02_len)
+ema_03 = ta.ema(ema_src, ema_03_len)
+ema_04 = ta.ema(ema_src, ema_04_len)
 
 // Plot EMAs on chart
 plot(ema_01, title='ema_01', color=#00FF00, style=plot.style_line, linewidth=1)
@@ -26,15 +26,15 @@ plot(ema_04, title='ema_04', color=#cb0000, style=plot.style_line, linewidth=1)
 
 
 //Cross detect
-cross_01_up = crossover(ema_01, ema_02)
-cross_01_down = crossunder(ema_01, ema_02)
+cross_01_up = ta.crossover(ema_01, ema_02)
+cross_01_down = ta.crossunder(ema_01, ema_02)
 // When cross occurs, draw a mark at the EMA level
 plot(cross_01_up or cross_01_down ? ema_01 : na, style=plot.style_cross, title="cross 01", linewidth=3, color=ema_01 > ema_02 ? color.green : color.red)
 // When cross occurs, draw a cross with text at the bottom of the chart
 plotchar(cross_01_up or cross_01_down ? ema_01 : na, title="cross_01", char="x", location=location.bottom, color=ema_01 > ema_02 ? color.green : color.red, text="Cross 01", textcolor=ema_01 > ema_02 ? color.green : color.red)
 //Cross2 detect
-cross_02_up = crossover(ema_03, ema_04)
-cross_02_down = crossunder(ema_03, ema_04)
+cross_02_up = ta.crossover(ema_03, ema_04)
+cross_02_down = ta.crossunder(ema_03, ema_04)
 // When cross occurs, draw a mark at the EMA level
 plot(cross_02_up or cross_02_down ? ema_03 : na, style=plot.style_cross, title="cross 02", linewidth=3, color=ema_03 > ema_04 ? color.green : color.red)
 // When cross occurs, draw a cross with text at the bottom of the chart
