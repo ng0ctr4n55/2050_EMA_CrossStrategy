@@ -1,0 +1,75 @@
+//@version=5
+indicator("4x Bollinger Bands (EMA/WMA High & Low)", overlay=true, max_lines_count=500)
+
+// Inputs
+length = input.int(20, "Length")
+mult   = input.float(2.0, "StdDev Multiplier")
+
+// === 1. EMA HIGH Bollinger Band ===
+basis_ema_high = ta.ema(high, length)
+dev_ema_high   = mult * ta.stdev(high, length)
+upper_ema_high = basis_ema_high + dev_ema_high
+lower_ema_high = basis_ema_high - dev_ema_high
+
+// === 2. WMA HIGH Bollinger Band ===
+basis_wma_high = ta.wma(high, length)
+dev_wma_high   = mult * ta.stdev(high, length)
+upper_wma_high = basis_wma_high + dev_wma_high
+lower_wma_high = basis_wma_high - dev_wma_high
+
+// === 3. EMA LOW Bollinger Band ===
+basis_ema_low = ta.ema(low, length)
+dev_ema_low   = mult * ta.stdev(low, length)
+upper_ema_low = basis_ema_low + dev_ema_low
+lower_ema_low = basis_ema_low - dev_ema_low
+
+// === 4. WMA LOW Bollinger Band ===
+basis_wma_low = ta.wma(low, length)
+dev_wma_low   = mult * ta.stdev(low, length)
+upper_wma_low = basis_wma_low + dev_wma_low
+lower_wma_low = basis_wma_low - dev_wma_low
+
+// === 5. EMA CLOSE Bollinger Band ===
+basis_ema_close = ta.ema(close, length)
+dev_ema_close   = mult * ta.stdev(close, length)
+upper_ema_close = basis_ema_close + dev_ema_close
+lower_ema_close = basis_ema_close - dev_ema_close
+
+// === Plotting ===
+// EMA High (green)
+p_ema_high_upper = plot(upper_ema_high, "Upper EMA High", color=color.new(color.green, 0), linewidth=1)
+p_ema_high_lower = plot(lower_ema_high, "Lower EMA High", color=color.new(color.green, 0), linewidth=1)
+
+
+// WMA High (green)
+p_wma_high_upper = plot(upper_wma_high, "Upper WMA High", color=color.new(color.green, 0), linewidth=1)
+p_wma_high_lower = plot(lower_wma_high, "Lower WMA High", color=color.new(color.green, 0), linewidth=1)
+fill(p_ema_high_upper, p_wma_high_upper, color=color.new(color.green, 85), title="WMA High Fill")
+fill(p_ema_high_lower, p_wma_high_lower, color=color.new(color.green, 85), title="EMA High Fill")
+
+// EMA Low (red)
+p_upper_ema_low = plot(upper_ema_low, "Upper EMA Low", color=color.new(color.red, 0), linewidth=1)
+p_lower_ema_low = plot(lower_ema_low, "Lower EMA Low", color=color.new(color.red, 0), linewidth=1)
+
+// WMA Low (red)
+p_upper_wma_low = plot(upper_wma_low, "Upper WMA Low", color=color.new(color.red, 0), linewidth=1)
+p_lower_wma_low = plot(lower_wma_low, "Lower WMA Low", color=color.new(color.red, 0), linewidth=1)
+fill(p_upper_ema_low, p_upper_wma_low, color=color.new(color.red, 85), title="WMA High Fill")
+fill(p_lower_ema_low, p_lower_wma_low, color=color.new(color.red, 85), title="EMA High Fill")
+
+// EMA Close (blue)
+p_ema_close_upper = plot(upper_ema_close, "Upper EMA Close", color=color.new(color.blue, 0), linewidth=1)
+p_ema_close_lower = plot(lower_ema_close, "Lower EMA Close", color=color.new(color.blue, 0), linewidth=1)
+fill(p_ema_close_upper, p_ema_close_lower, color=color.new(color.blue, 85), title="EMA Close Fill")
+
+// EMA 9 Close
+ema9_close = ta.ema(close, 9)
+p_ema9_close = plot(ema9_close, "EMA 9 Close", color=color.new(#4fe613, 0), linewidth=2)
+// EMA 26 Close
+ema26_close = ta.ema(close, 26)
+p_ema26_close = plot(ema26_close, "EMA 26 Close", color=color.new(color.orange, 0), linewidth=2)
+// EMA 9/26 cross markers
+cross_ema_up = ta.crossover(ema9_close, ema26_close)
+cross_ema_down = ta.crossunder(ema9_close, ema26_close)
+plotchar(cross_ema_up, title="EMA9/26 Cross Up", char='+', location=location.abovebar, color=color.new(color.green, 0), size=size.small)
+plotchar(cross_ema_down, title="EMA9/26 Cross Down", char='+', location=location.belowbar, color=color.new(color.red, 0), size=size.small)
