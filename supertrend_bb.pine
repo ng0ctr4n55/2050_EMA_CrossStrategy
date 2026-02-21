@@ -1,6 +1,13 @@
-// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
-// © fluxchart
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Disclaimer:
+//The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
+//Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
 
+//@version=6
+
+
+strategy(
+     "EMA Cross Strategy",
 //@version=6
 indicator("SuperTrend + Relative Volume (Kernel Optimized) | Flux Charts", max_labels_count = 500, overlay = true )
 import TradingView/ta/9 as ta
