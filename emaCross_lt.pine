@@ -1,3 +1,8 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Disclaimer:
+//The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
+//Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
+
 //@version=6
 indicator("EMA Cross", overlay=true)
 // Simple EMA cross indicator with indication of crosses on the EMA line and at the chart bottom
@@ -8,7 +13,7 @@ indicator("EMA Cross", overlay=true)
 ema_01_len = input.int(9, title='Ema 1', minval=1)
 ema_02_len = input.int(20, title='Ema 2', minval=1)
 ema_03_len = input.int(50, title='Ema 3', minval=1)
-ema_04_len = input.int(158, title='Ema 4', minval=1)
+ema_04_len = input.int(150, title='Ema 4', minval=1)
 ema_src = input.source(close, title="Source")
 
 // Calculate EMA values
