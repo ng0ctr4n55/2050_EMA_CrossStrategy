@@ -1,3 +1,8 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Disclaimer:
+//The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
+//Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
+
 //@version=5
 indicator("4x Bollinger Bands (EMA/WMA High & Low)", overlay=true, max_lines_count=500)
 
