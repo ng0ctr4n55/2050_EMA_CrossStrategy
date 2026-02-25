@@ -246,16 +246,73 @@ candleColor = bull ? bullishColor : bear ? bearishColor : na
 
 barcolor(showTrendColor ? trend_color : na)
 
-// === 9 EMA and 26 EMA ===
-ema9 = ta.ema(close, 9)
-ema26 = ta.ema(close, 26)
+// // === 9 EMA and 26 EMA ===
+// ema9 = ta.ema(close, 9)
+// ema26 = ta.ema(close, 26)
 
-plot(ema9, color=color.orange, linewidth=2, title="EMA 9")
-plot(ema26, color=color.purple, linewidth=2, title="EMA 26")
+// plot(ema9, color=color.orange, linewidth=2, title="EMA 9")
+// plot(ema26, color=color.purple, linewidth=2, title="EMA 26")
 
-// Highlight EMA cross up and cross down
-ema_cross_up = ta.crossover(ema9, ema26)
-ema_cross_down = ta.crossunder(ema9, ema26)
+// // Highlight EMA cross up and cross down
+// ema_cross_up = ta.crossover(ema9, ema26)
+// ema_cross_down = ta.crossunder(ema9, ema26)
 
-plotshape(ema_cross_up, title="EMA 9 Cross Up 26", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small, offset=0)
-plotshape(ema_cross_down, title="EMA 9 Cross Down 26", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small, offset=0)
+// plotshape(ema_cross_up, title="EMA 9 Cross Up 26", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small, offset=0)
+// plotshape(ema_cross_down, title="EMA 9 Cross Down 26", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small, offset=0)
+
+// === CM_Ultimate_MA_MTF ===
+//inputs
+src_ma = close
+useCurrentRes = input(true, title="Use Current Chart Resolution?")
+resCustom = input.timeframe(title="Use Different Timeframe? Uncheck Box Above", defval="D")
+len_ma = input.int(20, title="Moving Average Length - LookBack Period")
+atype = input.int(1,minval=1,maxval=7,title="1=SMA, 2=EMA, 3=WMA, 4=HullMA, 5=VWMA, 6=RMA, 7=TEMA")
+cc = input(true,title="Change Color Based On Direction?")
+smoothe = input.int(2, minval=1, maxval=10, title="Color Smoothing - 1 = No Smoothing")
+doma2 = input(false, title="Optional 2nd Moving Average")
+len2 = input.int(50, title="Moving Average Length - Optional 2nd MA")
+atype2 = input.int(1,minval=1,maxval=7,title="1=SMA, 2=EMA, 3=WMA, 4=HullMA, 5=VWMA, 6=RMA, 7=TEMA")
+cc2 = input(true,title="Change Color Based On Direction 2nd MA?")
+warn = input(false, title="***You Can Turn On The Show Dots Parameter Below Without Plotting 2nd MA to See Crosses***")
+warn2 = input(false, title="***If Using Cross Feature W/O Plotting 2ndMA - Make Sure 2ndMA Parameters are Set Correctly***")
+sd = input(false, title="Show Dots on Cross of Both MA's")
+
+res_ma = useCurrentRes ? timeframe.period : resCustom
+//hull ma definition
+hullma = ta.wma(2*ta.wma(src_ma, math.round(len_ma/2))-ta.wma(src_ma, len_ma), math.round(math.sqrt(len_ma)))
+//TEMA definition
+ema1 = ta.ema(src_ma, len_ma)
+ema2 = ta.ema(ema1, len_ma)
+ema3 = ta.ema(ema2, len_ma)
+tema = 3 * (ema1 - ema2) + ema3
+
+avg = atype == 1 ? ta.sma(src_ma,len_ma) : atype == 2 ? ta.ema(src_ma,len_ma) : atype == 3 ? ta.wma(src_ma,len_ma) : atype == 4 ? hullma : atype == 5 ? ta.vwma(src_ma, len_ma) : atype == 6 ? ta.rma(src_ma,len_ma) : tema
+//2nd Ma - hull ma definition
+hullma2 = ta.wma(2*ta.wma(src_ma, math.round(len2/2))-ta.wma(src_ma, len2), math.round(math.sqrt(len2)))
+//2nd MA TEMA definition
+sema1 = ta.ema(src_ma, len2)
+sema2 = ta.ema(sema1, len2)
+sema3 = ta.ema(sema2, len2)
+stema = 3 * (sema1 - sema2) + sema3
+
+avg2 = atype2 == 1 ? ta.sma(src_ma,len2) : atype2 == 2 ? ta.ema(src_ma,len2) : atype2 == 3 ? ta.wma(src_ma,len2) : atype2 == 4 ? hullma2 : atype2 == 5 ? ta.vwma(src_ma, len2) : atype2 == 6 ? ta.rma(src_ma,len2) : stema
+
+out = avg 
+out_two = avg2
+
+out1 = request.security(syminfo.tickerid, res_ma, out)
+out2 = request.security(syminfo.tickerid, res_ma, out_two)
+
+ma_up = out1 >= out1[smoothe]
+ma_down = out1 < out1[smoothe]
+
+col_ma = cc ? ma_up ? color.lime : ma_down ? color.red : color.aqua : color.aqua
+col2_ma = cc2 ? ma_up ? color.lime : ma_down ? color.red : color.aqua : color.aqua
+
+circleYPosition = out2
+
+plot(out1, title="Multi-Timeframe Moving Avg", linewidth=4, color = col_ma)
+plot(doma2 ? out2 : na, title="2nd Multi-TimeFrame Moving Average", style=plot.style_circles, linewidth=4, color=col2_ma)
+cross_val = ta.cross(out1, out2)
+plot(sd and cross_val ? circleYPosition : na, style=plot.style_cross, linewidth=5, color=color.yellow)
+plot(sd and cross_val ? circleYPosition : na, style=plot.style_cross, linewidth=5, color=color.yellow)
