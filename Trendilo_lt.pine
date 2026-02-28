@@ -17,6 +17,14 @@ blength = cblen ? blen : length
 rms = bmult * math.sqrt(math.sum(avpch * avpch, blength) / blength)
 cdir = avpch > rms ? 1 : avpch < -rms ? -1 : 0
 col = cdir == 1 ? color.lime : cdir == -1 ? color.red : color.gray
+// Notification logic
+var int last_cdir = na
+if not na(cdir) and cdir != last_cdir
+	if cdir == 1
+		alert('Trendilo: Trend turned GREEN', alert.freq_once_per_bar)
+	if cdir == -1
+		alert('Trendilo: Trend turned RED', alert.freq_once_per_bar)
+	last_cdir := cdir
 fplot = plot(avpch, color=highlight ? col : color.blue, linewidth=2)
 posrms = plot(rms, color=color.new(color.purple, 0))
 negrms = plot(-rms, color=color.new(color.purple, 0))
