@@ -17,14 +17,6 @@ blength = cblen ? blen : length
 rms = bmult * math.sqrt(math.sum(avpch * avpch, blength) / blength)
 cdir = avpch > rms ? 1 : avpch < -rms ? -1 : 0
 col = cdir == 1 ? color.lime : cdir == -1 ? color.red : color.gray
-// Notification logic
-var int last_cdir = na
-if not na(cdir) and cdir != last_cdir
-	if cdir == 1
-		alert('Trendilo: Trend turned GREEN', alert.freq_once_per_bar)
-	if cdir == -1
-		alert('Trendilo: Trend turned RED', alert.freq_once_per_bar)
-	last_cdir := cdir
 fplot = plot(avpch, color=highlight ? col : color.blue, linewidth=2)
 posrms = plot(rms, color=color.new(color.purple, 0))
 negrms = plot(-rms, color=color.new(color.purple, 0))
@@ -36,5 +28,45 @@ hline(0)
 // Show label when avpch touches 0 line
 touches_zero = math.abs(avpch) < 0.0001
 if touches_zero
-	label.new(x=bar_index, y=0, text="NO GO ZONE", color=color.gray, style=label.style_label_down, size=size.small)
+    label.new(x=bar_index, y=0, text="NO GO ZONE", color=color.gray, style=label.style_label_down, size=size.small)
 
+// ─── Alert Dialog Notifications ───────────────────────────────────────────────
+
+// Detect when avpch crosses +1 (bullish signal)
+cross_up_1   = ta.crossover(avpch, 0.0001)
+
+// Detect when avpch crosses -1 (bearish signal)
+cross_down_1 = ta.crossunder(avpch, -0.0001)
+
+// Visual label for avpch crossing +1
+if cross_up_1
+    label.new(
+         x     = bar_index,
+         y     = avpch,
+         text  = "▲ AVPCH +1",
+         color = color.lime,
+         textcolor = color.black,
+         style = label.style_label_down,
+         size  = size.normal)
+
+// Visual label for avpch crossing -1
+if cross_down_1
+    label.new(
+         x     = bar_index,
+         y     = avpch,
+         text  = "▼ AVPCH -1",
+         color = color.red,
+         textcolor = color.white,
+         style = label.style_label_up,
+         size  = size.normal)
+
+// ── Alert Conditions (attach these in the Alerts dialog in TradingView) ──────
+alertcondition(
+     cross_up_1,
+     title   = "AVPCH Crossed +1 (Bullish)",
+     message = "🟢 Trendilo Alert: avpch has crossed ABOVE +1 — potential bullish momentum on {{ticker}} at {{close}}")
+
+alertcondition(
+     cross_down_1,
+     title   = "AVPCH Crossed -1 (Bearish)",
+     message = "🔴 Trendilo Alert: avpch has crossed BELOW -1 — potential bearish momentum on {{ticker}} at {{close}}")

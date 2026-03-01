@@ -1,0 +1,57 @@
+//@version=6
+strategy('Trendilo Strategy', overlay=false)
+src = input(close, title='Source')
+smooth = input.int(1, title='Smoothing', minval=1)
+length = input.int(50, title='Lookback', minval=1)
+offset = input.float(0.85, title='ALMA Offset', step=0.01)
+sigma = input.int(6, title='ALMA Sigma', minval=0)
+bmult = input(1.0, 'Band Multiplier')
+cblen = input(false, 'Custom Band Length ? (Else same as Lookback)')
+blen = input(20, 'Custom Band Length')
+highlight = input(true)
+fill = input(true)
+barcol = input(false, 'Bar Color')
+pch = ta.change(src, smooth) / src * 100
+avpch = ta.alma(pch, length, offset, sigma)
+blength = cblen ? blen : length
+rms = bmult * math.sqrt(math.sum(avpch * avpch, blength) / blength)
+cdir = avpch > rms ? 1 : avpch < -rms ? -1 : 0
+col = cdir == 1 ? color.lime : cdir == -1 ? color.red : color.gray
+
+// Strategy logic: enter long on green, exit on red, and vice versa
+var int long_entry_bar = na
+var int short_entry_bar = na
+
+if ta.crossover(cdir, 0) and cdir == 1
+	strategy.entry('Long', strategy.long)
+	long_entry_bar := bar_index
+if ta.crossunder(cdir, 0) and cdir == -1
+	strategy.close('Long')
+	strategy.entry('Short', strategy.short)
+	short_entry_bar := bar_index
+if ta.crossover(cdir, 0) and cdir == 1 and strategy.position_size < 0
+	strategy.close('Short')
+
+// Exit after 50 bars for long
+if strategy.position_size > 0 and not na(long_entry_bar) and bar_index - long_entry_bar >= 50
+	strategy.close('Long')
+	long_entry_bar := na
+// Exit after 50 bars for short
+if strategy.position_size < 0 and not na(short_entry_bar) and bar_index - short_entry_bar >= 50
+	strategy.close('Short')
+	short_entry_bar := na
+
+
+fplot = plot(avpch, color=highlight ? col : color.blue, linewidth=2)
+posrms = plot(rms, color=color.new(color.purple, 0))
+negrms = plot(-rms, color=color.new(color.purple, 0))
+fill(fplot, posrms, color=fill and cdir > 0 ? col : na)
+fill(fplot, negrms, color=fill and cdir < 0 ? col : na)
+barcolor(color=barcol ? col : na)
+hline(0)
+
+// Show label when avpch touches 0 line
+touches_zero = math.abs(avpch) < 0.0001
+if touches_zero
+	label.new(x=bar_index, y=0, text="NO GO ZONE", color=color.gray, style=label.style_label_down, size=size.small)
+
