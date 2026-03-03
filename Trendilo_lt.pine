@@ -1,72 +1,173 @@
 //@version=6
-indicator('Trendilo', overlay=false)
-src = input(close, title='Source')
-smooth = input.int(1, title='Smoothing', minval=1)
-length = input.int(50, title='Lookback', minval=1)
-offset = input.float(0.85, title='ALMA Offset', step=0.01)
-sigma = input.int(6, title='ALMA Sigma', minval=0)
-bmult = input(1.0, 'Band Multiplier')
-cblen = input(false, 'Custom Band Length ? (Else same as Lookback)')
-blen = input(20, 'Custom Band Length')
-highlight = input(true)
-fill = input(true)
-barcol = input(false, 'Bar Color')
-pch = ta.change(src, smooth) / src * 100
-avpch = ta.alma(pch, length, offset, sigma)
+indicator('Triple Confirm: EMA + SuperTrend + Trendilo', overlay=false)
+
+// ═══════════════════════════════════════════════════════════
+// INPUTS
+// ═══════════════════════════════════════════════════════════
+
+ema_len    = input.int(20,   'EMA Length',            minval=1,             group='EMA')
+
+st_atr_len = input.int(10,   'SuperTrend ATR Length', minval=1,             group='SuperTrend')
+st_factor  = input.float(3.0,'SuperTrend Factor',     minval=0.1, step=0.1, group='SuperTrend')
+
+src    = input.source(close, 'Source',         group='Trendilo')
+smooth = input.int(1,    'Smoothing',           minval=1,    group='Trendilo')
+length = input.int(50,   'Lookback',            minval=1,    group='Trendilo')
+offset = input.float(0.85,'ALMA Offset',        step=0.01,   group='Trendilo')
+sigma  = input.int(6,    'ALMA Sigma',          minval=0,    group='Trendilo')
+bmult  = input.float(1.0,'Band Multiplier',     step=0.1,    group='Trendilo')
+cblen  = input.bool(false,'Custom Band Length',              group='Trendilo')
+blen   = input.int(20,   'Custom Band Length',               group='Trendilo')
+
+// ── Risk Display ─────────────────────────────────────────────
+atr_sl_len  = input.int(14,   'ATR Length (SL)',     minval=1,              group='Risk')
+atr_sl_mult = input.float(1.5,'ATR Multiplier (SL)', step=0.1,              group='Risk')
+rr_ratio    = input.float(2.0,'Reward : Risk Ratio', step=0.5, minval=0.5,  group='Risk')
+
+show_fill   = input.bool(true,  'Fill Trendilo Bands', group='Display')
+show_label  = input.bool(true,  'Show Entry Labels',   group='Display')
+show_sl_tp  = input.bool(true,  'Show SL / TP Lines',  group='Display')
+show_bc     = input.bool(true,  'Bar Color',            group='Display')
+
+// ═══════════════════════════════════════════════════════════
+// CALCULATIONS
+// ═══════════════════════════════════════════════════════════
+
+ema20 = ta.ema(close, ema_len)
+
+[st_line, st_dir] = ta.supertrend(st_factor, st_atr_len)
+above_supertrend  = st_dir == -1
+below_supertrend  = st_dir ==  1
+
+pch     = ta.change(src, smooth) / src * 100
+avpch   = ta.alma(pch, length, offset, sigma)
 blength = cblen ? blen : length
-rms = bmult * math.sqrt(math.sum(avpch * avpch, blength) / blength)
-cdir = avpch > rms ? 1 : avpch < -rms ? -1 : 0
-col = cdir == 1 ? color.lime : cdir == -1 ? color.red : color.gray
-fplot = plot(avpch, color=highlight ? col : color.blue, linewidth=2)
-posrms = plot(rms, color=color.new(color.purple, 0))
-negrms = plot(-rms, color=color.new(color.purple, 0))
-fill(fplot, posrms, color=fill and cdir > 0 ? col : na)
-fill(fplot, negrms, color=fill and cdir < 0 ? col : na)
-barcolor(color=barcol ? col : na)
-hline(0)
+rms     = bmult * math.sqrt(math.sum(avpch * avpch, blength) / blength)
+cdir    = avpch > rms ? 1 : avpch < -rms ? -1 : 0
+col     = cdir == 1 ? color.lime : cdir == -1 ? color.red : color.gray
 
-// Show label when avpch touches 0 line
+trendilo_green = cdir ==  1
+trendilo_red   = cdir == -1
+
+price_above_ema = close > ema20
+price_below_ema = close < ema20
+
+// ── ATR SL / TP distances ────────────────────────────────────
+atr_val = ta.atr(atr_sl_len)
+sl_dist = atr_val * atr_sl_mult
+tp_dist = sl_dist * rr_ratio
+
+// ═══════════════════════════════════════════════════════════
+// SIGNAL CONDITIONS
+// ═══════════════════════════════════════════════════════════
+
+long_cond  = price_above_ema
+           and above_supertrend
+           and ta.crossover(float(cdir), 0)
+
+short_cond = price_below_ema
+           and below_supertrend
+           and ta.crossunder(float(cdir), 0)
+
+// ═══════════════════════════════════════════════════════════
+// SL / TP LABEL ON SIGNAL BAR  (drawn on price — overlay pane
+// not available here, so we display levels as labels on the
+// Trendilo pane at the zero line with price values in text)
+// ═══════════════════════════════════════════════════════════
+if long_cond and show_sl_tp
+    sl_price = close - sl_dist
+    tp_price = close + tp_dist
+    label.new(bar_index, -rms * 0.5,
+         '▲ LONG\nTP ' + str.tostring(math.round(tp_price, 3)) +
+         '\nSL ' + str.tostring(math.round(sl_price, 3)),
+         color=color.new(color.lime, 20),
+         textcolor=color.black,
+         style=label.style_label_up,
+         size=size.small)
+
+if short_cond and show_sl_tp
+    sl_price = close + sl_dist
+    tp_price = close - tp_dist
+    label.new(bar_index, rms * 0.5,
+         '▼ SHORT\nTP ' + str.tostring(math.round(tp_price, 3)) +
+         '\nSL ' + str.tostring(math.round(sl_price, 3)),
+         color=color.new(color.red, 20),
+         textcolor=color.white,
+         style=label.style_label_down,
+         size=size.small)
+
+// ═══════════════════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════════════════
+alertcondition(long_cond,  'LONG Signal',  '🟢 LONG: All 3 conditions met — EMA ✓  SuperTrend ✓  Trendilo GREEN ✓')
+alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: All 3 conditions met — EMA ✓  SuperTrend ✓  Trendilo RED ✓')
+alertcondition(long_cond or short_cond, 'Any Signal', '⚡ Triple Confirm signal fired')
+
+// ═══════════════════════════════════════════════════════════
+// PLOTS
+// ═══════════════════════════════════════════════════════════
+
+fplot  = plot(avpch, color=col,                        linewidth=2, title='Trendilo')
+posrms = plot( rms,  color=color.new(color.purple, 0), linewidth=1, title='RMS+')
+negrms = plot(-rms,  color=color.new(color.purple, 0), linewidth=1, title='RMS-')
+hline(0, 'Zero', color=color.new(color.white, 60), linestyle=hline.style_dashed)
+
+fill(fplot, posrms, color=show_fill and cdir > 0 ? color.new(color.lime, 70) : na)
+fill(fplot, negrms, color=show_fill and cdir < 0 ? color.new(color.red,  70) : na)
+
+// ── Entry arrows ─────────────────────────────────────────────
+plotshape(long_cond  and show_label, title='Long Signal',
+     style=shape.triangleup,   location=location.bottom,
+     color=color.lime, size=size.normal, text='LONG')
+
+plotshape(short_cond and show_label, title='Short Signal',
+     style=shape.triangledown, location=location.top,
+     color=color.red,  size=size.normal, text='SHORT')
+
+barcolor(show_bc ? col : na)
+
+// ── No-Go Zone label ─────────────────────────────────────────
 touches_zero = math.abs(avpch) < 0.0001
-if touches_zero
-    label.new(x=bar_index, y=0, text="NO GO ZONE", color=color.gray, style=label.style_label_down, size=size.small)
+was_away     = math.abs(avpch[1]) >= 0.0001
+if touches_zero and was_away
+    label.new(bar_index, 0, 'NO GO ZONE',
+              color=color.gray, style=label.style_label_down, size=size.small)
 
-// ─── Alert Dialog Notifications ───────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// INFO TABLE  (bottom-right)
+// ═══════════════════════════════════════════════════════════
+var table info = table.new(position.bottom_right, 2, 8,
+     bgcolor=color.new(color.black, 70), border_width=1,
+     border_color=color.new(color.white, 80))
 
-// Detect when avpch crosses +1 (bullish signal)
-cross_up_1   = ta.crossover(avpch, 0.0001)
+if barstate.islast
+    table.cell(info, 0, 0, 'CONDITION',       text_color=color.white,  text_size=size.small, bgcolor=color.new(color.navy, 40))
+    table.cell(info, 1, 0, 'STATUS',          text_color=color.white,  text_size=size.small, bgcolor=color.new(color.navy, 40))
 
-// Detect when avpch crosses -1 (bearish signal)
-cross_down_1 = ta.crossunder(avpch, -0.0001)
+    table.cell(info, 0, 1, 'Price vs 20 EMA', text_color=color.black, text_size=size.small)
+    table.cell(info, 1, 1, price_above_ema ? '▲ ABOVE' : '▼ BELOW',
+               text_color=price_above_ema ? color.lime : color.red, text_size=size.small)
 
-// Visual label for avpch crossing +1
-if cross_up_1
-    label.new(
-         x     = bar_index,
-         y     = avpch,
-         text  = "▲ AVPCH +1",
-         color = color.lime,
-         textcolor = color.black,
-         style = label.style_label_down,
-         size  = size.normal)
+    table.cell(info, 0, 2, 'SuperTrend',      text_color=color.black, text_size=size.small)
+    table.cell(info, 1, 2, above_supertrend ? '▲ BULL' : '▼ BEAR',
+               text_color=above_supertrend ? color.lime : color.red, text_size=size.small)
 
-// Visual label for avpch crossing -1
-if cross_down_1
-    label.new(
-         x     = bar_index,
-         y     = avpch,
-         text  = "▼ AVPCH -1",
-         color = color.red,
-         textcolor = color.white,
-         style = label.style_label_up,
-         size  = size.normal)
+    table.cell(info, 0, 3, 'Trendilo',        text_color=color.black, text_size=size.small)
+    table.cell(info, 1, 3, trendilo_green ? '▲ GREEN' : trendilo_red ? '▼ RED' : '— GRAY',
+               text_color=trendilo_green ? color.lime : trendilo_red ? color.red : color.gray, text_size=size.small)
 
-// ── Alert Conditions (attach these in the Alerts dialog in TradingView) ──────
-alertcondition(
-     cross_up_1,
-     title   = "AVPCH Crossed +1 (Bullish)",
-     message = "🟢 Trendilo Alert: avpch has crossed ABOVE +1 — potential bullish momentum on {{ticker}} at {{close}}")
+    table.cell(info, 0, 4, 'ATR Value',       text_color=color.black, text_size=size.small)
+    table.cell(info, 1, 4, str.tostring(math.round(atr_val, 4)),
+               text_color=color.white, text_size=size.small)
 
-alertcondition(
-     cross_down_1,
-     title   = "AVPCH Crossed -1 (Bearish)",
-     message = "🔴 Trendilo Alert: avpch has crossed BELOW -1 — potential bearish momentum on {{ticker}} at {{close}}")
+    table.cell(info, 0, 5, 'Stop Loss dist',  text_color=color.black, text_size=size.small)
+    table.cell(info, 1, 5, str.tostring(math.round(sl_dist, 4)),
+               text_color=color.red, text_size=size.small)
+
+    table.cell(info, 0, 6, 'Take Profit dist',text_color=color.black, text_size=size.small)
+    table.cell(info, 1, 6, str.tostring(math.round(tp_dist, 4)),
+               text_color=color.lime, text_size=size.small)
+
+    table.cell(info, 0, 7, 'R:R Ratio',       text_color=color.black, text_size=size.small)
+    table.cell(info, 1, 7, str.tostring(rr_ratio, '#.#') + ' : 1',
+               text_color=color.yellow, text_size=size.small)
