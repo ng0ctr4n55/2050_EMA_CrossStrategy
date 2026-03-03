@@ -11,8 +11,8 @@ import TradingView/ta/9 as ta
 const bool DEBUG = false
 
 //Supertrend Inputs
-atrLength = input.int(10, title = "ATR Length", group = "SuperTrend")
-atrMultiplier = input.int(3, title = "ATR Multiplier", group = "SuperTrend")
+atrLength = input.int(5, title = "ATR Length", group = "SuperTrend")
+atrMultiplier = input.int(4, title = "ATR Multiplier", group = "SuperTrend")
 supertrend_max_opacity = input.int(99, minval = 0, maxval = 100, title = "SuperTrend Max Opacity", group = "SuperTrend", tooltip = "This setting sets the opacity of supertrend based on the KDE%. A higher value will increase the transparency.")
 supertrend_min_opacity = input.int(53, minval = 0, maxval = 100, title = "SuperTrend Min Opacity", group = "SuperTrend", tooltip = "This setting sets the opacity of supertrend based on the KDE%. A lower value will decrease the transparency.")
 
