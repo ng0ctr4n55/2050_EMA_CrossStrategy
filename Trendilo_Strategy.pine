@@ -1,5 +1,8 @@
 //@version=6
-strategy('Trendilo Strategy', overlay=false)
+strategy('Trendilo Strategy', overlay= true,
+     initial_capital = 10000,
+     default_qty_type  = strategy.percent_of_equity,
+     default_qty_value = 50)
 src = input(close, title='Source')
 smooth = input.int(1, title='Smoothing', minval=1)
 length = input.int(50, title='Lookback', minval=1)
