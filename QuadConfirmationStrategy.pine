@@ -1,0 +1,72 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Disclaimer:
+//The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
+//Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
+
+//@version=6
+strategy('Quad Confirm Strategy: EMA + SuperTrend + Trendilo + Volume', 
+     overlay=true, 
+     initial_capital=20000, 
+     default_qty_type=strategy.percent_of_equity, 
+     default_qty_value=50)
+
+// ═══════════════════════════════════════════════════════════
+// INPUTS
+// ═══════════════════════════════════════════════════════════
+ema_len    = input.int(20,   'EMA Length',            minval=1,             group='EMA')
+st_atr_len = input.int(10,   'SuperTrend ATR Length', minval=1,             group='SuperTrend')
+st_factor  = input.float(3.0,'SuperTrend Factor',     minval=0.1, step=0.1, group='SuperTrend')
+
+src    = input.source(close, 'Source',         group='Trendilo')
+smooth = input.int(1,    'Smoothing',          minval=1,    group='Trendilo')
+length = input.int(50,   'Lookback',            minval=1,    group='Trendilo')
+offset = input.float(0.85,'ALMA Offset',        step=0.01,   group='Trendilo')
+sigma  = input.int(6,    'ALMA Sigma',          minval=0,    group='Trendilo')
+bmult  = input.float(1.0,'Band Multiplier',     step=0.1,    group='Trendilo')
+cblen  = input.bool(false,'Custom Band Length', group='Trendilo')
+blen   = input.int(20,   'Custom Band Length',               group='Trendilo')
+
+vol_ma_len  = input.int(20,  'Volume MA Length',       minval=1,             group='Volume')
+vol_ma_type = input.string('SMA', 'Volume MA Type', options=['SMA','EMA','WMA'], group='Volume')
+
+// Strategy Specific Inputs
+tp_percent = input.float(5, "Take Profit %", step=0.01, group="Strategy Settings") / 100
+
+// ═══════════════════════════════════════════════════════════
+// CALCULATIONS
+// ═══════════════════════════════════════════════════════════
+ema20 = ta.ema(close, ema_len)
+[st_line, st_dir] = ta.supertrend(st_factor, st_atr_len)
+above_supertrend  = st_dir == -1
+below_supertrend  = st_dir ==  1
+
+pch     = ta.change(src, smooth) / src * 100
+avpch   = ta.alma(pch, length, offset, sigma)
+blength = cblen ? blen : length
+rms     = bmult * math.sqrt(math.sum(avpch * avpch, blength) / blength)
+cdir    = avpch > rms ? 1 : avpch < -rms ? -1 : 0
+
+vol_ma = vol_ma_type == 'EMA' ? ta.ema(volume, vol_ma_len) : vol_ma_type == 'WMA' ? ta.wma(volume, vol_ma_len) : ta.sma(volume, vol_ma_len)
+volume_above_ma = volume > vol_ma
+
+// ═══════════════════════════════════════════════════════════
+// STRATEGY EXECUTION (4 confirmations required)
+// ═══════════════════════════════════════════════════════════
+long_cond  = (close > ema20) and above_supertrend and ta.crossover(float(cdir), 0) and volume_above_ma
+short_cond = (close < ema20) and below_supertrend and ta.crossunder(float(cdir), 0) and volume_above_ma
+
+// Long Entry and Exit
+if long_cond
+    strategy.entry("Long", strategy.long)
+    strategy.exit("TP Long", "Long", limit=close * (1 + tp_percent))
+
+// Short Entry and Exit
+if short_cond
+    strategy.entry("Short", strategy.short)
+    strategy.exit("TP Short", "Short", limit=close * (1 - tp_percent))
+
+// ═══════════════════════════════════════════════════════════
+// PLOTS (Overlayed on Chart)
+// ═══════════════════════════════════════════════════════════
+plot(ema20, color=color.blue, title="EMA 20")
+plot(st_line, color=st_dir == -1 ? color.lime : color.red, title="SuperTrend")
