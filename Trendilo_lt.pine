@@ -1,3 +1,8 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Disclaimer:
+//The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
+//Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
+
 //@version=6
 indicator('Triple Confirm: SuperTrend + Trendilo + EMA', overlay=false)
 
@@ -78,19 +83,22 @@ bool  vi_above   = vi_ratio >= 1.0   // volume confirming (at or above EMA)
 // Background colour: aqua when volume is above its EMA, transparent when below
 color vi_bg = vi_above ? color.new(color.aqua, 80) : na
 
-// ═══════════════════════════════════════════════════════════
+/// ═══════════════════════════════════════════════════════════
 // SIGNAL CONDITIONS  (4 confirmations required)
 // ═══════════════════════════════════════════════════════════
+
+cdir_cross_up   = ta.crossover(float(cdir), 0)
+cdir_cross_down = ta.crossunder(float(cdir), 0)
 
 long_cond  = price_above_ema20
            and price_above_ema150
            and above_supertrend
-           and ta.crossover(float(cdir), 0)
+           and cdir_cross_up
 
 short_cond = price_below_ema20
            and price_below_ema150
            and below_supertrend
-           and ta.crossunder(float(cdir), 0)
+           and cdir_cross_down
 
 // ═══════════════════════════════════════════════════════════
 // ALERTS
