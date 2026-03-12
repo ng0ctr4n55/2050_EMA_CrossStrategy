@@ -8,8 +8,8 @@ indicator('Triple Confirm: SuperTrend + Trendilo + EMA', overlay=false)
 ema_fast_len = input.int(20,  'Fast EMA Length', minval=1, group='EMA')
 ema_slow_len = input.int(150, 'Slow EMA Length', minval=1, group='EMA')
 
-st_atr_len = input.int(6,    'SuperTrend ATR Length', minval=1,             group='SuperTrend')
-st_factor  = input.float(7.0,'SuperTrend Factor',     minval=0.1, step=0.1, group='SuperTrend')
+st_atr_len = input.int(5,    'SuperTrend ATR Length', minval=1,             group='SuperTrend')
+st_factor  = input.float(4.0,'SuperTrend Factor',     minval=0.1, step=0.1, group='SuperTrend')
 
 src    = input.source(close, 'Source',          group='Trendilo')
 smooth = input.int(1,    'Smoothing',            minval=1,    group='Trendilo')
