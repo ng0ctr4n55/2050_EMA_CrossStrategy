@@ -60,7 +60,7 @@ if (longCondition and inDateRange and longOK)
     alert("EMA 50 crossed above EMA 200 - Buy Signal!", alert.freq_once_per_bar_close)
 if (shortCondition and inDateRange and shortOK)
     strategy.entry("short", strategy.short)
-    alert("EMA 50 crossed below EMA 200 - Buy Signal!", alert.freq_once_per_bar_close)
+    alert("EMA 50 crossed below EMA 200 - Sell Signal!", alert.freq_once_per_bar_close)
 
     
 // Submit exit orders in the cases where we trade only long or only short
@@ -80,7 +80,9 @@ bb_ma(source, length, _type) =>
     switch _type
         "SMA" => ta.sma(source, length)
         "EMA" => ta.ema(source, length)
-      
+        "SMMA (RMA)" => ta.rma(source, length)
+        "WMA" => ta.wma(source, length)
+        "VWMA" => ta.vwma(source, length)
 
 bb_basis = bb_ma(bb_src, bb_length, bb_maType)
 bb_dev = bb_mult * ta.stdev(bb_src, bb_length)
@@ -92,10 +94,5 @@ bb_p1 = plot(bb_upper, "BB Upper", color=color.yellow, offset = bb_offset)
 bb_p2 = plot(bb_lower, "BB Lower", color=color.yellow, offset = bb_offset)
 fill(bb_p2, bb_p1, title = "BB Background", color=color.rgb(91, 152, 212, 75))
 
-
-// Fill outer zones
-bgcolor(close >= bb_basis ? color.new(color.green, 85) : na)
-bgcolor(close <= bb_basis ? color.new(color.red, 85) : na)
-
-
-
+// Fill background based on price vs BB basis
+bgcolor(close > bb_basis ? color.new(color.green, 85) : close < bb_basis ? color.new(color.red, 85) : na)

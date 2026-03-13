@@ -90,12 +90,14 @@ color vi_bg = vi_above ? color.new(color.aqua, 80) : na
 cdir_cross_up   = ta.crossover(float(cdir), 0)
 cdir_cross_down = ta.crossunder(float(cdir), 0)
 
-long_cond  = price_above_ema20
+long_cond  = above_supertrend
+           and price_above_ema20
            and price_above_ema150
            and vi_above
            and cdir_cross_up
 
-short_cond = price_below_ema20
+short_cond = below_supertrend
+           and price_below_ema20
            and price_below_ema150
            and vi_above
            and cdir_cross_down
@@ -103,8 +105,8 @@ short_cond = price_below_ema20
 // ═══════════════════════════════════════════════════════════
 // ALERTS
 // ═══════════════════════════════════════════════════════════
-alertcondition(long_cond,  'LONG Signal',  '🟢 LONG: 20 EMA ✓  150 EMA ✓  Volume Index ✓  Trendilo GREEN ✓')
-alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: 20 EMA ✓  150 EMA ✓  Volume Index ✓  Trendilo RED ✓')
+alertcondition(long_cond,  'LONG Signal',  '🟢 LONG: SuperTrend ✓ 20 EMA ✓  150 EMA ✓  Volume Index ✓  Trendilo GREEN ✓')
+alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: SuperTrend ✓ 20 EMA ✓  150 EMA ✓  Volume Index ✓  Trendilo RED ✓')
 alertcondition(long_cond or short_cond, 'Any Signal', '⚡ Quad Confirm signal fired')
 
 // ═══════════════════════════════════════════════════════════
@@ -134,11 +136,11 @@ plotshape(short_cond and show_label, title='Short Signal',
 barcolor(show_bc ? col : na)
 
 // ── No-Go Zone label ─────────────────────────────────────────
+var no_go_label = label.new(na, na, 'NO GO ZONE', color=color.gray, style=label.style_label_down, size=size.small)
 touches_zero = math.abs(avpch) < 0.0001
 was_away     = math.abs(avpch[1]) >= 0.0001
 if touches_zero and was_away
-    label.new(bar_index, 0, 'NO GO ZONE',
-              color=color.gray, style=label.style_label_down, size=size.small)
+    label.set_xy(no_go_label, bar_index, 0)
 
 // ═══════════════════════════════════════════════════════════
 // INFO TABLE  (bottom-right) — 5 rows
