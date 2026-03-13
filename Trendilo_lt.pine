@@ -92,19 +92,19 @@ cdir_cross_down = ta.crossunder(float(cdir), 0)
 
 long_cond  = price_above_ema20
            and price_above_ema150
-           and above_supertrend
+           and vi_above
            and cdir_cross_up
 
 short_cond = price_below_ema20
            and price_below_ema150
-           and below_supertrend
+           and vi_above
            and cdir_cross_down
 
 // ═══════════════════════════════════════════════════════════
 // ALERTS
 // ═══════════════════════════════════════════════════════════
-alertcondition(long_cond,  'LONG Signal',  '🟢 LONG: 20 EMA ✓  150 EMA ✓  SuperTrend ✓  Trendilo GREEN ✓')
-alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: 20 EMA ✓  150 EMA ✓  SuperTrend ✓  Trendilo RED ✓')
+alertcondition(long_cond,  'LONG Signal',  '🟢 LONG: 20 EMA ✓  150 EMA ✓  Volume Index ✓  Trendilo GREEN ✓')
+alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: 20 EMA ✓  150 EMA ✓  Volume Index ✓  Trendilo RED ✓')
 alertcondition(long_cond or short_cond, 'Any Signal', '⚡ Quad Confirm signal fired')
 
 // ═══════════════════════════════════════════════════════════
@@ -160,9 +160,9 @@ if barstate.islast
     table.cell(info, 1, 2, price_above_ema150 ? '▲ ABOVE' : '▼ BELOW',
                text_color=price_above_ema150 ? color.lime : color.red, text_size=size.large)
 
-    table.cell(info, 0, 3, 'SuperTrend',        text_color=color.white, text_size=size.large)
-    table.cell(info, 1, 3, above_supertrend ? '▲ BULL' : '▼ BEAR',
-               text_color=above_supertrend ? color.lime : color.red, text_size=size.large)
+    table.cell(info, 0, 3, 'Volume Index',      text_color=color.white, text_size=size.large)
+    table.cell(info, 1, 3, vi_above ? '▲ STRONG' : '▼ WEAK',
+               text_color=vi_above ? color.lime : color.red, text_size=size.large)
 
     table.cell(info, 0, 4, 'Trendilo',          text_color=color.white, text_size=size.large)
     table.cell(info, 1, 4, trendilo_green ? '▲ GREEN' : trendilo_red ? '▼ RED' : '— GRAY',
