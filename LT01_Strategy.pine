@@ -1,0 +1,173 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Disclaimer:
+//The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
+//Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
+
+//@version=6
+strategy('Triple Confirm Strategy', overlay=false,
+     initial_capital=20000,
+     default_qty_type=strategy.percent_of_equity,
+     default_qty_value=50)
+
+// ═══════════════════════════════════════════════════════════
+// INPUTS
+// ═══════════════════════════════════════════════════════════
+
+ema_fast_len = input.int(20, 'Fast EMA Length', minval=1, group='EMA')
+ema_slow_len = input.int(50, 'Slow EMA Length', minval=1, group='EMA')
+
+st_atr_len = input.int(5,    'SuperTrend ATR Length', minval=1,             group='SuperTrend')
+st_factor  = input.float(4.0,'SuperTrend Factor',     minval=0.1, step=0.1, group='SuperTrend')
+
+src    = input.source(close, 'Source',          group='Trendilo')
+smooth = input.int(1,    'Smoothing',            minval=1,    group='Trendilo')
+length = input.int(50,   'Lookback',             minval=1,    group='Trendilo')
+offset = input.float(0.85,'ALMA Offset',         step=0.01,   group='Trendilo')
+sigma  = input.int(6,    'ALMA Sigma',           minval=0,    group='Trendilo')
+bmult  = input.float(1.0,'Band Multiplier',      step=0.1,    group='Trendilo')
+cblen  = input.bool(false,'Custom Band Length',               group='Trendilo')
+blen   = input.int(20,   'Custom Band Length',                group='Trendilo')
+
+// ── Volume Index ─────────────────────────────────────────────
+vi_ema_len  = input.int(10,  'Volume EMA Length', minval=1, group='Volume Index')
+show_vi     = input.bool(true,'Show Volume Index', group='Volume Index')
+
+// ── Risk Display ─────────────────────────────────────────────
+atr_sl_len  = input.int(14,   'ATR Length (SL)',     minval=1,             group='Risk')
+atr_sl_mult = input.float(1.5,'ATR Multiplier (SL)', step=0.1,             group='Risk')
+rr_ratio    = input.float(2.0,'Reward : Risk Ratio', step=0.5, minval=0.5, group='Risk')
+sl_perc     = input.float(1.0, 'Stop Loss %', minval=0.01, step=0.01, group='Risk')
+tp_perc     = input.float(0.2, 'Take Profit %', minval=0.01, step=0.01, group='Risk')
+
+show_fill   = input.bool(true, 'Fill Trendilo Bands', group='Display')
+show_sl_tp  = input.bool(true, 'Show SL / TP Lines',  group='Display')
+show_bc     = input.bool(true, 'Bar Color',            group='Display')
+
+// ═══════════════════════════════════════════════════════════
+// CALCULATIONS
+// ═══════════════════════════════════════════════════════════
+
+ema20 = ta.ema(close, ema_fast_len)
+ema50 = ta.ema(close, ema_slow_len)
+
+[st_line, st_dir] = ta.supertrend(st_factor, st_atr_len)
+above_supertrend  = st_dir == -1
+below_supertrend  = st_dir ==  1
+
+pch     = ta.change(src, smooth) / src * 100
+avpch   = ta.alma(pch, length, offset, sigma)
+blength = cblen ? blen : length
+rms     = bmult * math.sqrt(math.sum(avpch * avpch, blength) / blength)
+cdir    = avpch > rms ? 1 : avpch < -rms ? -1 : 0
+col     = cdir == 1 ? color.lime : cdir == -1 ? color.red : color.gray
+
+trendilo_green = cdir ==  1
+trendilo_red   = cdir == -1
+
+ema20_above_ema50 = ema20 > ema50
+ema20_below_ema50 = ema20 < ema50
+
+// ── ATR SL / TP distances ────────────────────────────────────
+atr_val = ta.atr(atr_sl_len)
+sl_dist = atr_val * atr_sl_mult
+tp_dist = sl_dist * rr_ratio
+
+// ── Volume Index vs 10 EMA ───────────────────────────────────
+// Volume Index = current volume relative to its EMA, expressed as a ratio.
+// > 1.0  → volume is above its EMA  (confirming interest / momentum)
+// < 1.0  → volume is below its EMA  (weak / fading participation)
+// Displayed as a histogram centred on 1.0 so it reads intuitively alongside
+// the Trendilo oscillator panel without needing a separate pane.
+float vi_ema     = ta.ema(volume, vi_ema_len)
+float vi_ratio   = vi_ema != 0 ? volume / vi_ema : 1.0
+bool  vi_above   = vi_ratio >= 1.0   // volume confirming (at or above EMA)
+
+// Background colour: aqua when volume is above its EMA, transparent when below
+color vi_bg = vi_above ? color.new(color.aqua, 80) : na
+
+/// ═══════════════════════════════════════════════════════════
+// SIGNAL CONDITIONS  (4 confirmations required)
+// ═══════════════════════════════════════════════════════════
+
+cdir_cross_up   = ta.crossover(float(cdir), 0)
+cdir_cross_down = ta.crossunder(float(cdir), 0)
+
+long_cond  = above_supertrend
+           and ema20_above_ema50
+           and vi_above
+           and cdir_cross_up
+
+short_cond = below_supertrend
+           and ema20_below_ema50
+           and vi_above
+           and cdir_cross_down
+
+// ═══════════════════════════════════════════════════════════
+// STRATEGY
+// ═══════════════════════════════════════════════════════════
+
+if long_cond
+    strategy.entry('Long', strategy.long)
+
+if short_cond
+    strategy.entry('Short', strategy.short)
+
+long_tp_price = strategy.position_avg_price * (1 + tp_perc / 100)
+long_sl_price = strategy.position_avg_price * (1 - sl_perc / 100)
+
+short_tp_price = strategy.position_avg_price * (1 - tp_perc / 100)
+short_sl_price = strategy.position_avg_price * (1 + sl_perc / 100)
+
+if strategy.position_size > 0
+    strategy.exit('Exit Long', from_entry='Long', limit=long_tp_price, stop=long_sl_price)
+if strategy.position_size < 0
+    strategy.exit('Exit Short', from_entry='Short', limit=short_tp_price, stop=short_sl_price)
+
+
+// ═══════════════════════════════════════════════════════════
+// PLOTS
+// ═══════════════════════════════════════════════════════════
+
+// ── Volume Index background highlight ────────────────────────
+bgcolor(show_vi ? vi_bg : na, title='Volume Index Background')
+
+// ── Trendilo ─────────────────────────────────────────────────
+fplot  = plot(avpch, color=col,                        linewidth=2, title='Trendilo')
+posrms = plot( rms,  color=color.new(color.purple, 0), linewidth=1, title='RMS+')
+negrms = plot(-rms,  color=color.new(color.purple, 0), linewidth=1, title='RMS-')
+
+fill(fplot, posrms, color=show_fill and cdir > 0 ? color.new(color.lime, 70) : na)
+fill(fplot, negrms, color=show_fill and cdir < 0 ? color.new(color.red,  70) : na)
+
+barcolor(show_bc ? col : na)
+
+// ── No-Go Zone label ─────────────────────────────────────────
+var no_go_label = label.new(na, na, 'NO GO ZONE', color=color.gray, style=label.style_label_down, size=size.small)
+touches_zero = math.abs(avpch) < 0.0001
+was_away     = math.abs(avpch[1]) >= 0.0001
+if touches_zero and was_away
+    label.set_xy(no_go_label, bar_index, 0)
+
+// ═══════════════════════════════════════════════════════════
+// INFO TABLE  (bottom-right) — 5 rows
+// ═══════════════════════════════════════════════════════════
+var table info = table.new(position.bottom_right, 2, 5,
+     bgcolor      = color.new(color.black, 70),
+     frame_width  = 1,
+     frame_color  = color.new(color.white, 80))
+
+if barstate.islast
+    table.cell(info, 0, 0, 'CONDITION',         text_color=color.white, text_size=size.large, bgcolor=color.new(color.navy, 40))
+    table.cell(info, 1, 0, 'STATUS',            text_color=color.white, text_size=size.large, bgcolor=color.new(color.navy, 40))
+
+    table.cell(info, 0, 1, '20 EMA vs 50 EMA',  text_color=color.white, text_size=size.large)
+    table.cell(info, 1, 1, ema20_above_ema50 ? '▲ ABOVE' : '▼ BELOW',
+               text_color=ema20_above_ema50 ? color.lime : color.red, text_size=size.large)
+
+    table.cell(info, 0, 2, 'Volume Index',      text_color=color.white, text_size=size.large)
+    table.cell(info, 1, 2, vi_above ? '▲ STRONG' : '▼ WEAK',
+               text_color=vi_above ? color.lime : color.red, text_size=size.large)
+
+    table.cell(info, 0, 3, 'Trendilo',          text_color=color.white, text_size=size.large)
+    table.cell(info, 1, 3, trendilo_green ? '▲ GREEN' : trendilo_red ? '▼ RED' : '— GRAY',
+               text_color=trendilo_green ? color.lime : trendilo_red ? color.red : color.gray, text_size=size.large)
