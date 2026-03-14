@@ -10,8 +10,8 @@ indicator('Triple Confirm: SuperTrend + Trendilo + EMA', overlay=false)
 // INPUTS
 // ═══════════════════════════════════════════════════════════
 
-ema_fast_len = input.int(20,  'Fast EMA Length', minval=1, group='EMA')
-ema_slow_len = input.int(150, 'Slow EMA Length', minval=1, group='EMA')
+ema_fast_len = input.int(20, 'Fast EMA Length', minval=1, group='EMA')
+ema_slow_len = input.int(50, 'Slow EMA Length', minval=1, group='EMA')
 
 st_atr_len = input.int(5,    'SuperTrend ATR Length', minval=1,             group='SuperTrend')
 st_factor  = input.float(4.0,'SuperTrend Factor',     minval=0.1, step=0.1, group='SuperTrend')
@@ -43,8 +43,8 @@ show_bc     = input.bool(true, 'Bar Color',            group='Display')
 // CALCULATIONS
 // ═══════════════════════════════════════════════════════════
 
-ema20  = ta.ema(close, ema_fast_len)
-ema150 = ta.ema(close, ema_slow_len)
+ema20 = ta.ema(close, ema_fast_len)
+ema50 = ta.ema(close, ema_slow_len)
 
 [st_line, st_dir] = ta.supertrend(st_factor, st_atr_len)
 above_supertrend  = st_dir == -1
@@ -60,10 +60,8 @@ col     = cdir == 1 ? color.lime : cdir == -1 ? color.red : color.gray
 trendilo_green = cdir ==  1
 trendilo_red   = cdir == -1
 
-price_above_ema20  = close > ema20
-price_below_ema20  = close < ema20
-price_above_ema150 = close > ema150
-price_below_ema150 = close < ema150
+ema20_above_ema50 = ema20 > ema50
+ema20_below_ema50 = ema20 < ema50
 
 // ── ATR SL / TP distances ────────────────────────────────────
 atr_val = ta.atr(atr_sl_len)
@@ -91,22 +89,20 @@ cdir_cross_up   = ta.crossover(float(cdir), 0)
 cdir_cross_down = ta.crossunder(float(cdir), 0)
 
 long_cond  = above_supertrend
-           and price_above_ema20
-           and price_above_ema150
+           and ema20_above_ema50
            and vi_above
            and cdir_cross_up
 
 short_cond = below_supertrend
-           and price_below_ema20
-           and price_below_ema150
+           and ema20_below_ema50
            and vi_above
            and cdir_cross_down
 
 // ═══════════════════════════════════════════════════════════
 // ALERTS
 // ═══════════════════════════════════════════════════════════
-alertcondition(long_cond,  'LONG Signal',  '🟢 LONG: SuperTrend ✓ 20 EMA ✓  150 EMA ✓  Volume Index ✓  Trendilo GREEN ✓')
-alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: SuperTrend ✓ 20 EMA ✓  150 EMA ✓  Volume Index ✓  Trendilo RED ✓')
+alertcondition(long_cond,  'LONG Signal',  '🟢 LONG: SuperTrend ✓ 20 EMA > 50 EMA ✓  Volume Index ✓  Trendilo GREEN ✓')
+alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: SuperTrend ✓ 20 EMA < 50 EMA ✓  Volume Index ✓  Trendilo RED ✓')
 alertcondition(long_cond or short_cond, 'Any Signal', '⚡ Quad Confirm signal fired')
 
 // ═══════════════════════════════════════════════════════════
@@ -145,7 +141,7 @@ if touches_zero and was_away
 // ═══════════════════════════════════════════════════════════
 // INFO TABLE  (bottom-right) — 5 rows
 // ═══════════════════════════════════════════════════════════
-var table info = table.new(position.bottom_right, 2, 6,
+var table info = table.new(position.bottom_right, 2, 5,
      bgcolor      = color.new(color.black, 70),
      frame_width  = 1,
      frame_color  = color.new(color.white, 80))
@@ -154,18 +150,14 @@ if barstate.islast
     table.cell(info, 0, 0, 'CONDITION',         text_color=color.white, text_size=size.large, bgcolor=color.new(color.navy, 40))
     table.cell(info, 1, 0, 'STATUS',            text_color=color.white, text_size=size.large, bgcolor=color.new(color.navy, 40))
 
-    table.cell(info, 0, 1, 'Price vs 20 EMA',   text_color=color.white, text_size=size.large)
-    table.cell(info, 1, 1, price_above_ema20  ? '▲ ABOVE' : '▼ BELOW',
-               text_color=price_above_ema20  ? color.lime : color.red, text_size=size.large)
+    table.cell(info, 0, 1, '20 EMA vs 50 EMA',  text_color=color.white, text_size=size.large)
+    table.cell(info, 1, 1, ema20_above_ema50 ? '▲ ABOVE' : '▼ BELOW',
+               text_color=ema20_above_ema50 ? color.lime : color.red, text_size=size.large)
 
-    table.cell(info, 0, 2, 'Price vs 150 EMA',  text_color=color.white, text_size=size.large)
-    table.cell(info, 1, 2, price_above_ema150 ? '▲ ABOVE' : '▼ BELOW',
-               text_color=price_above_ema150 ? color.lime : color.red, text_size=size.large)
-
-    table.cell(info, 0, 3, 'Volume Index',      text_color=color.white, text_size=size.large)
-    table.cell(info, 1, 3, vi_above ? '▲ STRONG' : '▼ WEAK',
+    table.cell(info, 0, 2, 'Volume Index',      text_color=color.white, text_size=size.large)
+    table.cell(info, 1, 2, vi_above ? '▲ STRONG' : '▼ WEAK',
                text_color=vi_above ? color.lime : color.red, text_size=size.large)
 
-    table.cell(info, 0, 4, 'Trendilo',          text_color=color.white, text_size=size.large)
-    table.cell(info, 1, 4, trendilo_green ? '▲ GREEN' : trendilo_red ? '▼ RED' : '— GRAY',
+    table.cell(info, 0, 3, 'Trendilo',          text_color=color.white, text_size=size.large)
+    table.cell(info, 1, 3, trendilo_green ? '▲ GREEN' : trendilo_red ? '▼ RED' : '— GRAY',
                text_color=trendilo_green ? color.lime : trendilo_red ? color.red : color.gray, text_size=size.large)

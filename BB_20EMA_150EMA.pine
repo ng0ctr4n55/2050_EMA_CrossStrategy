@@ -48,6 +48,6 @@ line_color = basis > ema150 ? color.green : color.red
 plot(basis, "Basis", color=line_color, offset = bb_offset, linewidth=1)
 p1 = plot(upper, "Upper", color=color.new(#F23645, 0), offset = bb_offset)
 p2 = plot(lower, "Lower", color=color.new(#089981, 0), offset = bb_offset)
-fill(p1, p2, title = "Background", color=color.new(line_color, 90))
+fill(p1, p2, title = "Background", color=color.new(line_color, 80))
 
 plot(ema150, title="150 EMA", color=line_color, offset=ema_offset, linewidth=2)
