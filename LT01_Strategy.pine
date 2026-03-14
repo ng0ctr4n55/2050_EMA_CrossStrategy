@@ -7,7 +7,8 @@
 strategy('Triple Confirm Strategy', overlay=false,
      initial_capital=20000,
      default_qty_type=strategy.percent_of_equity,
-     default_qty_value=50)
+     default_qty_value=50,
+calc_on_every_tick = true)
 
 // ═══════════════════════════════════════════════════════════
 // INPUTS
