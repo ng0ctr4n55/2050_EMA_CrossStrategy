@@ -137,16 +137,19 @@ plotshape(short_cond and show_label, title='Short Signal',
 barcolor(show_bc ? col : na)
 
 // ── No-Go Zone label ─────────────────────────────────────────
-var no_go_label = label.new(na, na, 'NO GO ZONE', color=color.gray, style=label.style_label_down, size=size.small)
+var label no_go_label = na
 touches_zero = math.abs(avpch) < 0.0001
 was_away     = math.abs(avpch[1]) >= 0.0001
 if touches_zero and was_away
-    label.set_xy(no_go_label, bar_index, 0)
+    if na(no_go_label)
+        no_go_label := label.new(bar_index, 0, 'NO GO ZONE', color=color.gray, style=label.style_label_down, size=size.small)
+    else
+        label.set_xy(no_go_label, bar_index, 0)
 
 // ═══════════════════════════════════════════════════════════
 // INFO TABLE  (bottom-right) — 5 rows
 // ═══════════════════════════════════════════════════════════
-var table info = table.new(position.bottom_right, 2, 6,
+var table info = table.new(position.bottom_right, 2, 5,
      bgcolor      = color.new(color.black, 70),
      frame_width  = 1,
      frame_color  = color.new(color.white, 80))
