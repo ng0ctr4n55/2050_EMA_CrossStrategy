@@ -90,12 +90,19 @@ alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: SuperTrend ✓  20 EMA <
 // ═══════════════════════════════════════════════════════════
 
 // ── Trendilo (offset by close so 0-line tracks price → chart centre) ──
-fplot  = plot(close + avpch, color=col,                        linewidth=2, title='Trendilo')
-posrms = plot(close + rms,   color=color.new(color.purple, 0), linewidth=1, title='RMS+')
-negrms = plot(close - rms,   color=color.new(color.purple, 0), linewidth=1, title='RMS-')
+// scale=scale.left on each plot pins the Trendilo line + bands to the LEFT
+// scale. The EMAs (plotted below) use scale=scale.none, leaving the right
+// scale to display price action.
+fplot  = plot(close + avpch, color=col,                        linewidth=2, title='Trendilo',      scale=scale.left)
+posrms = plot(close + rms,   color=color.new(color.purple, 0), linewidth=1, title='RMS+',         scale=scale.left)
+negrms = plot(close - rms,   color=color.new(color.purple, 0), linewidth=1, title='RMS-',         scale=scale.left)
 
 fill(fplot, posrms, color=show_fill and cdir > 0 ? color.new(color.lime, 70) : na)
 fill(fplot, negrms, color=show_fill and cdir < 0 ? color.new(color.red,  70) : na)
+
+// ── EMAs (right-hand price scale, scale=none so they don't claim the left) ──
+plot(ema20, color=color.new(color.yellow, 0), linewidth=2, title='EMA 20', scale=scale.none)
+plot(ema50, color=color.new(color.orange,  0), linewidth=2, title='EMA 50', scale=scale.none)
 
 // ── Entry arrows ─────────────────────────────────────────────
 plotshape(long_cond  and show_label, title='Long Signal',
