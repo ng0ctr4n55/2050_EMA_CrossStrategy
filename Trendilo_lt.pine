@@ -12,7 +12,6 @@ indicator('Triple Confirm: SuperTrend + Trendilo + EMA', overlay=false)
 
 ema_fast_len = input.int(20, 'Fast EMA Length', minval=1, group='EMA')
 ema_slow_len = input.int(50, 'Slow EMA Length', minval=1, group='EMA')
-ema9_len     = input.int(9,  '9 EMA Length',   minval=1, group='EMA')
 
 st_atr_len = input.int(5,    'SuperTrend ATR Length', minval=1,             group='SuperTrend')
 st_factor  = input.float(4.0,'SuperTrend Factor',     minval=0.1, step=0.1, group='SuperTrend')
@@ -25,10 +24,6 @@ sigma  = input.int(6,    'ALMA Sigma',           minval=0,    group='Trendilo')
 bmult  = input.float(1.0,'Band Multiplier',      step=0.1,    group='Trendilo')
 cblen  = input.bool(false,'Custom Band Length',               group='Trendilo')
 blen   = input.int(20,   'Custom Band Length',                group='Trendilo')
-
-// ── Volume Index ─────────────────────────────────────────────
-vi_ema_len  = input.int(10,  'Volume EMA Length', minval=1, group='Volume Index')
-show_vi     = input.bool(true,'Show Volume Index', group='Volume Index')
 
 // ── Risk Display ─────────────────────────────────────────────
 atr_sl_len  = input.int(14,   'ATR Length (SL)',     minval=1,             group='Risk')
@@ -44,7 +39,6 @@ show_bc     = input.bool(true, 'Bar Color',            group='Display')
 // CALCULATIONS
 // ═══════════════════════════════════════════════════════════
 
-ema9  = ta.ema(close, ema9_len)
 ema20 = ta.ema(close, ema_fast_len)
 ema50 = ta.ema(close, ema_slow_len)
 
@@ -64,29 +58,14 @@ trendilo_red   = cdir == -1
 
 ema20_above_ema50 = ema20 > ema50
 ema20_below_ema50 = ema20 < ema50
-price_above_ema9  = close > ema9
-price_below_ema9  = close < ema9
 
 // ── ATR SL / TP distances ────────────────────────────────────
 atr_val = ta.atr(atr_sl_len)
 sl_dist = atr_val * atr_sl_mult
 tp_dist = sl_dist * rr_ratio
 
-// ── Volume Index vs 10 EMA ───────────────────────────────────
-// Volume Index = current volume relative to its EMA, expressed as a ratio.
-// > 1.0  → volume is above its EMA  (confirming interest / momentum)
-// < 1.0  → volume is below its EMA  (weak / fading participation)
-// Displayed as a histogram centred on 1.0 so it reads intuitively alongside
-// the Trendilo oscillator panel without needing a separate pane.
-float vi_ema     = ta.ema(volume, vi_ema_len)
-float vi_ratio   = vi_ema != 0 ? volume / vi_ema : 1.0
-bool  vi_above   = vi_ratio >= 1.0   // volume confirming (at or above EMA)
-
-// Background colour: aqua when volume is above its EMA, transparent when below
-color vi_bg = vi_above ? color.new(color.aqua, 80) : na
-
-/// ═══════════════════════════════════════════════════════════
-// SIGNAL CONDITIONS  (4 confirmations required)
+// ═══════════════════════════════════════════════════════════
+// SIGNAL CONDITIONS  (3 confirmations required)
 // ═══════════════════════════════════════════════════════════
 
 cdir_cross_up   = ta.crossover(float(cdir), 0)
@@ -94,28 +73,21 @@ cdir_cross_down = ta.crossunder(float(cdir), 0)
 
 long_cond  = above_supertrend
            and ema20_above_ema50
-           and price_above_ema9
-           and vi_above
            and cdir_cross_up
 
 short_cond = below_supertrend
            and ema20_below_ema50
-           and price_below_ema9
-           and vi_above
            and cdir_cross_down
 
 // ═══════════════════════════════════════════════════════════
 // ALERTS
 // ═══════════════════════════════════════════════════════════
-alertcondition(long_cond,  'LONG Signal',  '🟢 LONG: SuperTrend ✓ 20 EMA > 50 EMA ✓ Price > 9 EMA ✓  Volume Index ✓  Trendilo GREEN ✓')
-alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: SuperTrend ✓ 20 EMA < 50 EMA ✓ Price < 9 EMA ✓  Volume Index ✓  Trendilo RED ✓')
+alertcondition(long_cond,  'LONG Signal',  '🟢 LONG: SuperTrend ✓  20 EMA > 50 EMA ✓  Trendilo GREEN ✓')
+alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: SuperTrend ✓  20 EMA < 50 EMA ✓  Trendilo RED ✓')
 
 // ═══════════════════════════════════════════════════════════
 // PLOTS
 // ═══════════════════════════════════════════════════════════
-
-// ── Volume Index background highlight ────────────────────────
-bgcolor(show_vi ? vi_bg : na, title='Volume Index Background')
 
 // ── Trendilo ─────────────────────────────────────────────────
 fplot  = plot(avpch, color=col,                        linewidth=2, title='Trendilo')
@@ -147,9 +119,9 @@ if touches_zero and was_away
         label.set_xy(no_go_label, bar_index, 0)
 
 // ═══════════════════════════════════════════════════════════
-// INFO TABLE  (bottom-right) — 5 rows
+// INFO TABLE  (bottom-right) — 3 rows
 // ═══════════════════════════════════════════════════════════
-var table info = table.new(position.bottom_right, 2, 5,
+var table info = table.new(position.bottom_right, 2, 3,
      bgcolor      = color.new(color.black, 70),
      frame_width  = 1,
      frame_color  = color.new(color.white, 80))
@@ -162,14 +134,6 @@ if barstate.islast
     table.cell(info, 1, 1, ema20_above_ema50 ? '▲ ABOVE' : '▼ BELOW',
                text_color=ema20_above_ema50 ? color.lime : color.red, text_size=size.large)
 
-    table.cell(info, 0, 2, 'Price vs 9 EMA',   text_color=color.white, text_size=size.large)
-    table.cell(info, 1, 2, price_above_ema9 ? '▲ ABOVE' : '▼ BELOW',
-               text_color=price_above_ema9 ? color.lime : color.red, text_size=size.large)
-
-    table.cell(info, 0, 3, 'Volume Index',      text_color=color.white, text_size=size.large)
-    table.cell(info, 1, 3, vi_above ? '▲ STRONG' : '▼ WEAK',
-               text_color=vi_above ? color.lime : color.red, text_size=size.large)
-
-    table.cell(info, 0, 4, 'Trendilo',          text_color=color.white, text_size=size.large)
-    table.cell(info, 1, 4, trendilo_green ? '▲ GREEN' : trendilo_red ? '▼ RED' : '— GRAY',
+    table.cell(info, 0, 2, 'Trendilo',          text_color=color.white, text_size=size.large)
+    table.cell(info, 1, 2, trendilo_green ? '▲ GREEN' : trendilo_red ? '▼ RED' : '— GRAY',
                text_color=trendilo_green ? color.lime : trendilo_red ? color.red : color.gray, text_size=size.large)
