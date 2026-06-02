@@ -100,6 +100,13 @@ negrms = plot(-rms,  color=color.new(color.purple, 0), linewidth=1, title='RMS-'
 fill(fplot, posrms, color=show_fill and cdir > 0 ? color.new(color.lime, 70) : na)
 fill(fplot, negrms, color=show_fill and cdir < 0 ? color.new(color.red,  70) : na)
 
+// ── Zero baseline (always-visible 0 line on the left scale) ────
+// hline() draws a constant horizontal line at the specified value on the
+// script's own scale. With scale=scale.left this sits at the 0 of the
+// Trendilo oscillator. Middle-of-chart goal is met by the price-action
+// where the line crosses close.
+hline(0, title='Zero Line', color=color.new(color.white, 30), linewidth=1, linestyle=hline.style_solid)
+
 // ── EMAs removed from this script ───────────────────────────────
 // EMA 20 / EMA 50 are now in EMA_Cross_Companion.pine (right price scale).
 // Keep ema20 / ema50 calculations here because the signal conditions
