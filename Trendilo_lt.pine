@@ -89,20 +89,26 @@ alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: SuperTrend ✓  20 EMA <
 // PLOTS
 // ═══════════════════════════════════════════════════════════
 
-// ── Trendilo (offset by close so 0-line tracks price → chart centre) ──
-// scale=scale.left on each plot pins the Trendilo line + bands to the LEFT
-// scale. The EMAs (plotted below) use scale=scale.none, leaving the right
-// scale to display price action.
-fplot  = plot(close + avpch, color=col,                        linewidth=2, title='Trendilo',      scale=scale.left)
-posrms = plot(close + rms,   color=color.new(color.purple, 0), linewidth=1, title='RMS+',         scale=scale.left)
-negrms = plot(close - rms,   color=color.new(color.purple, 0), linewidth=1, title='RMS-',         scale=scale.left)
+// ── Trendilo (overlay=True, scale=left → its own scale on the LEFT) ───
+// All plots in this script share the left scale; the candle/price scale on
+// the right is managed by the main chart and is independent.
+// (Note: `scale` is an indicator() argument, not a plot() argument in v6.)
+fplot  = plot(avpch, color=col,                        linewidth=2, title='Trendilo')
+posrms = plot( rms,  color=color.new(color.purple, 0), linewidth=1, title='RMS+')
+negrms = plot(-rms,  color=color.new(color.purple, 0), linewidth=1, title='RMS-')
 
 fill(fplot, posrms, color=show_fill and cdir > 0 ? color.new(color.lime, 70) : na)
 fill(fplot, negrms, color=show_fill and cdir < 0 ? color.new(color.red,  70) : na)
 
-// ── EMAs (right-hand price scale, scale=none so they don't claim the left) ──
-plot(ema20, color=color.new(color.yellow, 0), linewidth=2, title='EMA 20', scale=scale.none)
-plot(ema50, color=color.new(color.orange,  0), linewidth=2, title='EMA 50', scale=scale.none)
+// ── EMAs (price-level) ──────────────────────────────────────
+// Plotted here so the Trendilo script is self-contained. With scale=scale.left
+// on the indicator, these will be drawn on the LEFT scale — but since their
+// values are in the same range as close, the left scale will auto-fit to
+// display both the EMAs and the tiny Trendilo offsets. If you prefer a
+// cleaner split, add the companion script 'EMA_Cross_Companion.pine' which
+// plots the EMAs on the right price scale.
+plot(ema20, color=color.new(color.yellow, 0), linewidth=2, title='EMA 20')
+plot(ema50, color=color.new(color.orange,  0), linewidth=2, title='EMA 50')
 
 // ── Entry arrows ─────────────────────────────────────────────
 plotshape(long_cond  and show_label, title='Long Signal',
@@ -115,15 +121,15 @@ plotshape(short_cond and show_label, title='Short Signal',
 
 barcolor(show_bc ? col : na)
 
-// ── No-Go Zone label ─────────────────────────────────────────
+// ── No-Go Zone label (Trendilo scale, y=0 = middle of oscillator) ──
 var label no_go_label = na
 touches_zero = math.abs(avpch) < 0.0001
 was_away     = math.abs(avpch[1]) >= 0.0001
 if touches_zero and was_away
     if na(no_go_label)
-        no_go_label := label.new(bar_index, close, 'NO GO ZONE', color=color.gray, style=label.style_label_down, size=size.small)
+        no_go_label := label.new(bar_index, 0, 'NO GO ZONE', color=color.gray, style=label.style_label_down, size=size.small)
     else
-        label.set_xy(no_go_label, bar_index, close)
+        label.set_xy(no_go_label, bar_index, 0)
 
 // ═══════════════════════════════════════════════════════════
 // INFO TABLE  (bottom-right) — 3 rows

@@ -1,0 +1,22 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+//
+// EMA 20/50 companion script for the "Triple Confirm: Trendilos + EMAs"
+// indicator.  Use this if you want the EMAs to plot on the RIGHT price
+// scale (cleanly aligned with the candles) while the Trendilo script
+// uses the LEFT scale.
+//
+// Add BOTH scripts to the same chart:
+//   1. Trendilo_lt.pine         (Trendilo on left scale)
+//   2. EMA_Cross_Companion.pine (EMA 20/50 on right price scale)
+//
+//@version=6
+indicator('EMA Cross Companion', overlay=true)
+
+fast_len = input.int(20, 'Fast EMA Length', minval=1, group='EMA')
+slow_len = input.int(50, 'Slow EMA Length', minval=1, group='EMA')
+
+ema20 = ta.ema(close, fast_len)
+ema50 = ta.ema(close, slow_len)
+
+plot(ema20, color=color.new(color.yellow, 0), linewidth=2, title='EMA 20')
+plot(ema50, color=color.new(color.orange,  0), linewidth=2, title='EMA 50')
