@@ -4,7 +4,7 @@
 //Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
 
 //@version=6
-indicator('Triple Confirm: SuperTrend + Trendilo + EMA', overlay=false)
+indicator('Triple Confirm: Trendilos + EMAs', overlay=true, scale=scale.left)
 
 // ═══════════════════════════════════════════════════════════
 // INPUTS
@@ -89,10 +89,10 @@ alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: SuperTrend ✓  20 EMA <
 // PLOTS
 // ═══════════════════════════════════════════════════════════
 
-// ── Trendilo ─────────────────────────────────────────────────
-fplot  = plot(avpch, color=col,                        linewidth=2, title='Trendilo')
-posrms = plot( rms,  color=color.new(color.purple, 0), linewidth=1, title='RMS+')
-negrms = plot(-rms,  color=color.new(color.purple, 0), linewidth=1, title='RMS-')
+// ── Trendilo (offset by close so 0-line tracks price → chart centre) ──
+fplot  = plot(close + avpch, color=col,                        linewidth=2, title='Trendilo')
+posrms = plot(close + rms,   color=color.new(color.purple, 0), linewidth=1, title='RMS+')
+negrms = plot(close - rms,   color=color.new(color.purple, 0), linewidth=1, title='RMS-')
 
 fill(fplot, posrms, color=show_fill and cdir > 0 ? color.new(color.lime, 70) : na)
 fill(fplot, negrms, color=show_fill and cdir < 0 ? color.new(color.red,  70) : na)
@@ -114,9 +114,9 @@ touches_zero = math.abs(avpch) < 0.0001
 was_away     = math.abs(avpch[1]) >= 0.0001
 if touches_zero and was_away
     if na(no_go_label)
-        no_go_label := label.new(bar_index, 0, 'NO GO ZONE', color=color.gray, style=label.style_label_down, size=size.small)
+        no_go_label := label.new(bar_index, close, 'NO GO ZONE', color=color.gray, style=label.style_label_down, size=size.small)
     else
-        label.set_xy(no_go_label, bar_index, 0)
+        label.set_xy(no_go_label, bar_index, close)
 
 // ═══════════════════════════════════════════════════════════
 // INFO TABLE  (bottom-right) — 3 rows
