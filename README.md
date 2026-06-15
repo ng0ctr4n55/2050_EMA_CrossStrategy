@@ -7,11 +7,8 @@ A set of Pine Script v6 trading strategies and indicators for TradingView, focus
 | File | Type | Description |
 |------|------|-------------|
 | `2050EMA.pine` | Strategy | EMA 20/50 cross with Bollinger Bands, designed for weekly charts |
-| `LT01_Strategy.pine` | Strategy | Triple Confirm — SuperTrend + Trendilo + EMA + Volume Index |
-| `SuperTrend_EMA.pine` | Indicator | SuperTrend with KDE-based relative volume probability and EMA cross |
-| `BB_20EMA_150EMA.pine` | Indicator | Bollinger Bands with standalone EMA overlay |
-| `Trendilo_lt.pine` | Indicator | Trendilo + 9 EMA / 200 EMA momentum indicator |
-| `qullamaggie_breakout_setup1.pine` | Indicator | Qullamaggie breakout setup |
+| `20EMA-150EMA-supertrend-trendilo.pine` | Indicator | 20/150 EMA + SuperTrend + Trendilo — 4-condition confirmation with info table |
+| `qullamaggie_breakout_setup1.pine` | Indicator | Qullamaggie breakout setup — prior move, consolidation, bull backdrop |
 
 ## Quick Start (TradingView)
 
@@ -29,24 +26,26 @@ A set of Pine Script v6 trading strategies and indicators for TradingView, focus
 - **Exit**: Opposite cross
 - **Filter**: Bollinger Bands
 
-### LT01 — Triple Confirmation
-Requires four conditions to align:
-- SuperTrend direction
-- EMA 20 vs EMA 50 alignment
-- Price vs EMA 9
-- Trendilo oscillator crossing RMS band
-
 ## Indicators
 
-### Trendilo_lt — Trendilo + 9/200 EMA
-Uses three confirmations for signal arrows:
-1. **9 EMA vs 200 EMA** — trend direction
-2. **Price vs 9 EMA** — short-term momentum
-3. **Trendilo** — ALMA-smoothed momentum crossing RMS bands
+### 20EMA-150EMA-SuperTrend-Trendilo — 4-Condition Confirmation
+Combines four conditions for entry signals:
+1. **20 EMA vs 150 EMA** — trend direction
+2. **Price vs 20 EMA** — short-term momentum
+3. **SuperTrend** — trend-following filter
+4. **Trendilo** — ALMA-smoothed momentum oscillator crossing RMS band
 
-- **Long**: 9 EMA > 200 EMA, Price > 9 EMA, Trendilo crosses up through RMS band
-- **Short**: 9 EMA < 200 EMA, Price < 9 EMA, Trendilo crosses down through RMS band
-- **No-Go Zone**: Label appears when Trendilo touches zero
+- **Long**: 20 EMA > 150 EMA, Price > 20 EMA, SuperTrend UP, Trendilo crosses up through zero
+- **Short**: 20 EMA < 150 EMA, Price < 20 EMA, SuperTrend DOWN, Trendilo crosses down through zero
+- Displays an info table (bottom-right) showing all 4 condition statuses
+- Trend-aligned background colouring
+
+### Qullamaggie Breakout Setup 1
+Based on Kristjan Kullamägi's flag/continuation breakout setup:
+- Prior big move detection
+- ATR compression (consolidation)
+- Higher lows in consolidation
+- Bull backdrop (fast EMA > slow EMA)
 
 ## Video Walkthrough
 - [2050EMA Strategy Explanation](https://youtu.be/cGd2FPyhacI)
