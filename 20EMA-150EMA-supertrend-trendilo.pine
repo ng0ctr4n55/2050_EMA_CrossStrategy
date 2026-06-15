@@ -1,0 +1,146 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Disclaimer:
+//The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
+//Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
+
+//@version=6
+indicator('20/150 EMA + SuperTrend + Trendilo', shorttitle='20/150 ST + Trendilo', overlay=true, max_labels_count=500)
+
+// ═══════════════════════════════════════════════════════════
+// INPUTS
+// ═══════════════════════════════════════════════════════════
+
+// ── EMA ──────────────────────────────────────────────────────
+ema_fast_len = input.int(20,  'Fast EMA Length',  minval=1, group='EMA')
+ema_slow_len = input.int(150, 'Slow EMA Length',  minval=1, group='EMA')
+
+// ── SuperTrend ───────────────────────────────────────────────
+st_atr_len = input.int(5,    'ATR Length',        minval=1,             group='SuperTrend')
+st_factor  = input.float(4.0, 'Factor',            minval=0.1, step=0.1, group='SuperTrend')
+
+// ── Trendilo ─────────────────────────────────────────────────
+src    = input.source(close, 'Source',          group='Trendilo')
+smooth = input.int(1,    'Smoothing',            minval=1,    group='Trendilo')
+length = input.int(50,   'Lookback',             minval=1,    group='Trendilo')
+offset = input.float(0.85,'ALMA Offset',         step=0.01,   group='Trendilo')
+sigma  = input.int(6,    'ALMA Sigma',           minval=0,    group='Trendilo')
+bmult  = input.float(1.0,'Band Multiplier',      step=0.1,    group='Trendilo')
+cblen  = input.bool(false,'Custom Band Length',               group='Trendilo')
+blen   = input.int(20,   'Custom Band Length',                group='Trendilo')
+
+// ── Display ──────────────────────────────────────────────────
+show_fast_ema = input.bool(true, 'Show 20 EMA',     group='Display')
+show_slow_ema = input.bool(true, 'Show 150 EMA',    group='Display')
+show_st       = input.bool(true, 'Show SuperTrend', group='Display')
+show_bg       = input.bool(true, 'Trend Background', group='Display')
+show_arrows   = input.bool(true, 'Signal Arrows',   group='Display')
+show_table    = input.bool(true, 'Info Table',      group='Display')
+
+// ═══════════════════════════════════════════════════════════
+// CALCULATIONS
+// ═══════════════════════════════════════════════════════════
+
+ema20  = ta.ema(close, ema_fast_len)
+ema150 = ta.ema(close, ema_slow_len)
+
+[st_line, st_dir] = ta.supertrend(st_factor, st_atr_len)
+st_bull = st_dir == -1
+st_bear = st_dir ==  1
+
+pch     = ta.change(src, smooth) / src * 100
+avpch   = ta.alma(pch, length, offset, sigma)
+blength = cblen ? blen : length
+rms     = bmult * math.sqrt(math.sum(avpch * avpch, blength) / blength)
+cdir    = avpch > rms ? 1 : avpch < -rms ? -1 : 0
+
+trendilo_green = cdir ==  1
+trendilo_red   = cdir == -1
+
+ema20_above_ema150 = ema20 > ema150
+ema20_below_ema150 = ema20 < ema150
+price_above_ema20  = close > ema20
+price_below_ema20  = close < ema20
+
+// ═══════════════════════════════════════════════════════════
+// SIGNAL CONDITIONS
+// ═══════════════════════════════════════════════════════════
+
+cdir_cross_up   = ta.crossover(float(cdir), 0)
+cdir_cross_down = ta.crossunder(float(cdir), 0)
+
+long_cond  = ema20_above_ema150
+           and price_above_ema20
+           and st_bull
+           and cdir_cross_up
+
+short_cond = ema20_below_ema150
+           and price_below_ema20
+           and st_bear
+           and cdir_cross_down
+
+// ═══════════════════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════════════════
+
+alertcondition(long_cond,  'LONG Signal',  '🟢 LONG: 20 EMA > 150 EMA ✓  Price > 20 EMA ✓  SuperTrend UP ✓  Trendilo GREEN ✓')
+alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: 20 EMA < 150 EMA ✓  Price < 20 EMA ✓  SuperTrend DOWN ✓  Trendilo RED ✓')
+
+// ═══════════════════════════════════════════════════════════
+// PLOTS
+// ═══════════════════════════════════════════════════════════
+
+// Trend-aligned background: green when all long-side conditions line up,
+// red when all short-side conditions line up, otherwise neutral.
+all_long  = ema20_above_ema150 and price_above_ema20 and st_bull and trendilo_green
+all_short = ema20_below_ema150 and price_below_ema20 and st_bear and trendilo_red
+bg_color  = all_long  ? color.new(color.green, 90)
+          : all_short ? color.new(color.red,   90)
+          : na
+bgcolor(show_bg ? bg_color : na, title='Trend Background')
+
+// EMAs: 20 EMA changes colour with slope, 150 EMA is solid.
+ema20_color = ema20 > ema20[1] ? color.orange : color.new(color.orange, 50)
+plot(show_fast_ema ? ema20  : na, title='20 EMA',  color=ema20_color, linewidth=2)
+plot(show_slow_ema ? ema150 : na, title='150 EMA', color=color.blue,  linewidth=2)
+
+// SuperTrend line: green in uptrend, red in downtrend.
+st_color = st_bull ? color.green : color.red
+plot(show_st ? st_line : na, title='SuperTrend', color=st_color, linewidth=2, style=plot.style_linebr)
+
+// Entry arrows at confirmed signal bars.
+plotshape(long_cond  and show_arrows, title='Long Signal',
+     style=shape.triangleup,   location=location.belowbar,
+     color=color.green, size=size.normal, text='LONG')
+
+plotshape(short_cond and show_arrows, title='Short Signal',
+     style=shape.triangledown, location=location.abovebar,
+     color=color.red,  size=size.normal, text='SHORT')
+
+// ═══════════════════════════════════════════════════════════
+// INFO TABLE  (bottom-right) — 5 rows
+// ═══════════════════════════════════════════════════════════
+
+var table info = table.new(position.bottom_right, 2, 5,
+     bgcolor      = color.new(color.black, 70),
+     frame_width  = 1,
+     frame_color  = color.new(color.white, 80))
+
+if barstate.islast and show_table
+    table.cell(info, 0, 0, 'CONDITION',          text_color=color.white, text_size=size.large, bgcolor=color.new(color.navy, 40))
+    table.cell(info, 1, 0, 'STATUS',             text_color=color.white, text_size=size.large, bgcolor=color.new(color.navy, 40))
+
+    table.cell(info, 0, 1, '20 EMA vs 150 EMA',  text_color=color.white, text_size=size.large)
+    table.cell(info, 1, 1, ema20_above_ema150 ? '▲ ABOVE' : '▼ BELOW',
+               text_color=ema20_above_ema150 ? color.lime : color.red, text_size=size.large)
+
+    table.cell(info, 0, 2, 'Price vs 20 EMA',    text_color=color.white, text_size=size.large)
+    table.cell(info, 1, 2, price_above_ema20 ? '▲ ABOVE' : '▼ BELOW',
+               text_color=price_above_ema20 ? color.lime : color.red, text_size=size.large)
+
+    table.cell(info, 0, 3, 'SuperTrend',           text_color=color.white, text_size=size.large)
+    table.cell(info, 1, 3, st_bull ? '▲ UP' : st_bear ? '▼ DOWN' : '—',
+               text_color=st_bull ? color.lime : color.red, text_size=size.large)
+
+    table.cell(info, 0, 4, 'Trendilo',             text_color=color.white, text_size=size.large)
+    table.cell(info, 1, 4, trendilo_green ? '▲ GREEN' : trendilo_red ? '▼ RED' : '— GRAY',
+               text_color=trendilo_green ? color.lime : trendilo_red ? color.red : color.gray, text_size=size.large)
