@@ -15,16 +15,16 @@ ema_fast_len = input.int(20,  'Fast EMA Length',  minval=1, group='EMA')
 ema_slow_len = input.int(100, 'Slow EMA Length',  minval=1, group='EMA')
 
 // ── SuperTrend ───────────────────────────────────────────────
-st_atr_len = input.int(10,    'ATR Length',        minval=1,             group='SuperTrend')
-st_factor  = input.float(3.0, 'Factor',            minval=0.1, step=0.1, group='SuperTrend')
+st_atr_len = input.int(10,   'ATR Length', minval=1,             group='SuperTrend')
+st_factor  = input.float(3.0, 'Factor',     minval=0.1, step=0.1, group='SuperTrend')
 
 // ── Display ──────────────────────────────────────────────────
-show_fast_ema = input.bool(true, 'Show 20 EMA',     group='Display')
-show_slow_ema = input.bool(true, 'Show 100 EMA',    group='Display')
-show_st       = input.bool(true, 'Show SuperTrend', group='Display')
-show_bg       = input.bool(true, 'Trend Background', group='Display')
-show_arrows   = input.bool(true, 'Signal Arrows',   group='Display')
-show_table    = input.bool(true, 'Info Table',      group='Display')
+show_fast_ema = input.bool(true,  'Show 20 EMA',      group='Display')
+show_slow_ema = input.bool(true,  'Show 100 EMA',     group='Display')
+show_st       = input.bool(true,  'Show SuperTrend',  group='Display')
+show_bg       = input.bool(true,  'Trend Background', group='Display')
+show_arrows   = input.bool(true,  'Signal Arrows',    group='Display')
+show_table    = input.bool(true,  'Info Table',       group='Display')
 
 // ═══════════════════════════════════════════════════════════
 // CALCULATIONS
@@ -39,71 +39,62 @@ st_bear = st_dir ==  1
 
 ema20_above_ema100 = ema20 > ema100
 ema20_below_ema100 = ema20 < ema100
-price_above_ema20  = close > ema20
-price_below_ema20  = close < ema20
+price_above_ema100 = close > ema100
+price_below_ema100 = close < ema100
 
-// ═══════════════════════════════════════════════════════════
-// SIGNAL CONDITIONS
-// ═══════════════════════════════════════════════════════════
+// Counter-trend / breakout entries:
+// - Long when price closes above both EMAs but below the bearish SuperTrend line.
+// - Short when price closes below both EMAs but above the bullish SuperTrend line.
+price_above_ema20 = close > ema20
+price_below_ema20 = close < ema20
 
-long_cond  = close > ema100 and close < st_line
-short_cond = close < ema100 and close > st_line
-
-// ═══════════════════════════════════════════════════════════
-// ALERTS
-// ═══════════════════════════════════════════════════════════
-
-//alertcondition(long_cond,  'LONG Signal',  '🟢 LONG: Price > 100 EMA ✓  Price < SuperTrend ✓')
-//alertcondition(short_cond, 'SHORT Signal', '🔴 SHORT: Price < 100 EMA ✓  Price > SuperTrend ✓')
+long_cond  = price_above_ema20 and price_above_ema100 and st_bear and (close < st_line)
+short_cond = price_below_ema20 and price_below_ema100 and st_bull and (close > st_line)
 
 // ═══════════════════════════════════════════════════════════
 // PLOTS
 // ═══════════════════════════════════════════════════════════
 
-// Trend-aligned background: green when all long-side conditions line up,
-// red when all short-side conditions line up, otherwise neutral.
-all_long  = ema20_above_ema100 and price_above_ema20 and st_bull
-all_short = ema20_below_ema100 and price_below_ema20 and st_bear
-bg_color  = all_long  ? color.new(color.green, 90)
-          : all_short ? color.new(color.red,   90)
-          : na
+// Soft trend background — only when trend, price and SuperTrend agree.
+bg_color = ema20_above_ema100 and price_above_ema100 and st_bull ? color.new(#22c55e, 92)
+         : ema20_below_ema100 and price_below_ema100 and st_bear ? color.new(#ef4444, 92)
+         : na
 bgcolor(show_bg ? bg_color : na, title='Trend Background')
 
-// EMAs: 20 EMA changes colour with slope, 100 EMA is solid.
-ema20_color = ema20 > ema20[1] ? color.orange : color.new(color.orange, 50)
-plot(show_fast_ema ? ema20  : na, title='20 EMA',  color=ema20_color, linewidth=2)
-plot(show_slow_ema ? ema100 : na, title='100 EMA', color=color.blue,  linewidth=2)
+// EMAs: clean, thin lines.
+plot(show_fast_ema ? ema20  : na, title='20 EMA',  color=color.new(#f59e0b, 0), linewidth=1)
+plot(show_slow_ema ? ema100 : na, title='100 EMA', color=color.new(#3b82f6, 0), linewidth=2)
 
-// SuperTrend line: green in uptrend, red in downtrend.
-st_color = st_bull ? color.green : color.red
-plot(show_st ? st_line : na, title='SuperTrend', color=st_color, linewidth=2, style=plot.style_linebr)
+// SuperTrend line — dashed, desaturated.
+st_color = st_bull ? color.new(#22c55e, 10) : color.new(#ef4444, 10)
+plot(show_st ? st_line : na, title='SuperTrend', color=st_color, linewidth=1, style=plot.style_linebr)
 
-// Entry arrows at confirmed signal bars.
+// Minimal arrows: no text, small size.
 plotshape(long_cond  and show_arrows, title='Long Signal',
-     style=shape.triangleup,   location=location.belowbar,
-     color=color.green, size=size.normal, text='LONG')
+     style=shape.triangleup, location=location.belowbar,
+     color=color.new(#22c55e, 0), size=size.small, text='')
 
 plotshape(short_cond and show_arrows, title='Short Signal',
      style=shape.triangledown, location=location.abovebar,
-     color=color.red,  size=size.normal, text='SHORT')
+     color=color.new(#ef4444, 0), size=size.small, text='')
 
 // ═══════════════════════════════════════════════════════════
-// INFO TABLE  (bottom-right) — 3 rows
+// INFO TABLE  (bottom-right)
 // ═══════════════════════════════════════════════════════════
 
 var table info = table.new(position.bottom_right, 2, 3,
-     bgcolor      = color.new(color.black, 70),
-     frame_width  = 1,
-     frame_color  = color.new(color.white, 80))
+     bgcolor     = color.new(#0f172a, 30),
+     frame_width = 0)
 
 if barstate.islast and show_table
-    table.cell(info, 0, 0, 'CONDITION',          text_color=color.white, text_size=size.large, bgcolor=color.new(color.navy, 40))
-    table.cell(info, 1, 0, 'STATUS',             text_color=color.white, text_size=size.large, bgcolor=color.new(color.navy, 40))
+    table.cell(info, 0, 0, '20 / 100 EMA',  text_color=color.gray, text_size=size.tiny)
+    table.cell(info, 1, 0, ema20_above_ema100 ? 'BULL' : 'BEAR',
+               text_color=ema20_above_ema100 ? #22c55e : #ef4444, text_size=size.tiny)
 
-    table.cell(info, 0, 1, '20 EMA vs 100 EMA',  text_color=color.white, text_size=size.large)
-    table.cell(info, 1, 1, ema20_above_ema100 ? '▲ ABOVE' : '▼ BELOW',
-               text_color=ema20_above_ema100 ? color.lime : color.red, text_size=size.large)
+    table.cell(info, 0, 1, 'SuperTrend',     text_color=color.gray, text_size=size.tiny)
+    table.cell(info, 1, 1, st_bull ? 'UP' : st_bear ? 'DOWN' : '—',
+               text_color=st_bull ? #22c55e : #ef4444, text_size=size.tiny)
 
-    table.cell(info, 0, 2, 'SuperTrend',           text_color=color.white, text_size=size.large)
-    table.cell(info, 1, 2, st_bull ? '▲ UP' : st_bear ? '▼ DOWN' : '—',
-               text_color=st_bull ? color.lime : color.red, text_size=size.large)
+    table.cell(info, 0, 2, 'Signal',         text_color=color.gray, text_size=size.tiny)
+    table.cell(info, 1, 2, long_cond ? 'LONG' : short_cond ? 'SHORT' : '—',
+               text_color=long_cond ? #22c55e : short_cond ? #ef4444 : color.gray, text_size=size.tiny)

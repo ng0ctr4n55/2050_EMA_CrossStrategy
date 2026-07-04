@@ -7,7 +7,8 @@ A set of Pine Script v6 trading strategies and indicators for TradingView, focus
 | File | Type | Description |
 |------|------|-------------|
 | `2050EMA.pine` | Strategy | EMA 20/50 cross with Bollinger Bands, designed for weekly charts |
-| `20EMA-100EMA-supertrend.pine` | Indicator | 20/100 EMA + SuperTrend — 3-condition confirmation with info table |
+| `20EMA-100EMA-supertrend.pine` | Indicator | 20/100 EMA + SuperTrend — pullback signal with info table |
+| `20EMA-100EMA-supertrend-strategy.pine` | Strategy | 20/100 EMA + SuperTrend pullback strategy with ATR stop/target |
 | `qullamaggie_breakout_setup1.pine` | Indicator | Qullamaggie breakout setup — prior move, consolidation, bull backdrop |
 
 ## Quick Start (TradingView)
@@ -25,6 +26,12 @@ A set of Pine Script v6 trading strategies and indicators for TradingView, focus
 - **Entry**: EMA 20 crosses above EMA 50
 - **Exit**: Opposite cross
 - **Filter**: Bollinger Bands
+
+### 20EMA-100EMA-SuperTrend — Pullback Strategy
+- **Entry (Long)**: Price > 100 EMA and Price < SuperTrend line
+- **Entry (Short)**: Price < 100 EMA and Price > SuperTrend line
+- **Exit**: Price reverts back across the SuperTrend line, or ATR stop-loss / take-profit
+- **Risk**: ATR-based stop loss (1.5× ATR) and take profit (2.0× ATR)
 
 ## Indicators
 
