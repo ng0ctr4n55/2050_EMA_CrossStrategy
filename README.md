@@ -7,7 +7,7 @@ A set of Pine Script v6 trading strategies and indicators for TradingView, focus
 | File | Type | Description |
 |------|------|-------------|
 | `2050EMA.pine` | Strategy | EMA 20/50 cross with Bollinger Bands, designed for weekly charts |
-| `20EMA-150EMA-supertrend-trendilo.pine` | Indicator | 20/150 EMA + SuperTrend + Trendilo — 4-condition confirmation with info table |
+| `20EMA-100EMA-supertrend.pine` | Indicator | 20/100 EMA + SuperTrend — 3-condition confirmation with info table |
 | `qullamaggie_breakout_setup1.pine` | Indicator | Qullamaggie breakout setup — prior move, consolidation, bull backdrop |
 
 ## Quick Start (TradingView)
@@ -28,16 +28,15 @@ A set of Pine Script v6 trading strategies and indicators for TradingView, focus
 
 ## Indicators
 
-### 20EMA-150EMA-SuperTrend-Trendilo — 4-Condition Confirmation
-Combines four conditions for entry signals:
-1. **20 EMA vs 150 EMA** — trend direction
+### 20EMA-100EMA-SuperTrend — 3-Condition Confirmation
+Combines three conditions for entry signals:
+1. **20 EMA vs 100 EMA** — trend direction
 2. **Price vs 20 EMA** — short-term momentum
 3. **SuperTrend** — trend-following filter
-4. **Trendilo** — ALMA-smoothed momentum oscillator crossing RMS band
 
-- **Long**: 20 EMA > 150 EMA, Price > 20 EMA, SuperTrend UP, Trendilo crosses up through zero
-- **Short**: 20 EMA < 150 EMA, Price < 20 EMA, SuperTrend DOWN, Trendilo crosses down through zero
-- Displays an info table (bottom-right) showing all 4 condition statuses
+- **Long**: 20 EMA > 100 EMA, Price > 20 EMA, SuperTrend UP
+- **Short**: 20 EMA < 100 EMA, Price < 20 EMA, SuperTrend DOWN
+- Displays an info table (bottom-right) showing all 3 condition statuses
 - Trend-aligned background colouring
 
 ### Qullamaggie Breakout Setup 1
