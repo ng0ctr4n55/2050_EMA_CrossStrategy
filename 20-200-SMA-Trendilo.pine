@@ -4,7 +4,7 @@
 //Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
 
 //@version=5
-indicator('20/200 SMA Cross + Trendilo', shorttitle='20/200 SMA Trendilo', overlay=true, max_labels_count=500)
+indicator('20/50 SMA Cross + Trendilo', shorttitle='20/50 SMA Trendilo', overlay=true, max_labels_count=500)
 
 // ═══════════════════════════════════════════════════════════
 // INPUTS
@@ -12,7 +12,7 @@ indicator('20/200 SMA Cross + Trendilo', shorttitle='20/200 SMA Trendilo', overl
 
 // ── Moving Averages ─────────────────────────────────────────
 sma_fast_len = input.int(20,  'Fast SMA Length',  minval=1, group='Moving Averages')
-sma_slow_len = input.int(200, 'Slow SMA Length',  minval=1, group='Moving Averages')
+sma_slow_len = input.int(50, 'Slow SMA Length',  minval=1, group='Moving Averages')
 
 // ── Trendilo ───────────────────────────────────────────────
 src     = input(close, title='Source', group='Trendilo')
@@ -26,7 +26,7 @@ blen    = input(20, 'Custom Band Length', group='Trendilo')
 
 // ── Display ──────────────────────────────────────────────────
 show_fast_sma = input.bool(true, 'Show 20 SMA',      group='Display')
-show_slow_sma = input.bool(true, 'Show 200 SMA',     group='Display')
+show_slow_sma = input.bool(true, 'Show 50 SMA',     group='Display')
 show_bg       = input.bool(true, 'Trend Background', group='Display')
 show_arrows   = input.bool(true, 'Signal Arrows',    group='Display')
 show_table    = input.bool(true, 'Info Table',       group='Display')
@@ -36,7 +36,7 @@ show_table    = input.bool(true, 'Info Table',       group='Display')
 // ═══════════════════════════════════════════════════════════
 
 sma20  = ta.sma(close, sma_fast_len)
-sma200 = ta.sma(close, sma_slow_len)
+sma50 = ta.sma(close, sma_slow_len)
 
 // Trendilo
 pch     = ta.change(src, smooth) / src * 100
@@ -49,8 +49,8 @@ trend_up   = cdir == 1
 trend_down = cdir == -1
 
 // Signals: Trendilo direction + price above/below both SMAs.
-long_setup  = trend_up   and close > sma20 and close > sma200
-short_setup = trend_down and close < sma20 and close < sma200
+long_setup  = trend_up   and close > sma20 and close > sma50
+short_setup = trend_down and close < sma20 and close < sma50
 
 // Plot arrows only on the bar the setup starts.
 long_cond  = long_setup  and not long_setup[1]
@@ -68,7 +68,7 @@ bgcolor(show_bg ? bg_color : na, title='Trend Background')
 
 // Moving averages: clean, thin lines.
 plot(show_fast_sma ? sma20  : na, title='20 SMA',  color=color.new(#f59e0b, 0), linewidth=1)
-plot(show_slow_sma ? sma200 : na, title='200 SMA', color=color.new(#3b82f6, 0), linewidth=2)
+plot(show_slow_sma ? sma50 : na, title='50 SMA', color=color.new(#3b82f6, 0), linewidth=2)
 
 // Minimal arrows: no text, small size.
 plotshape(long_cond  and show_arrows, title='Long Signal',
@@ -90,13 +90,13 @@ var table info = table.new(position.bottom_right, 2, 3,
      bgcolor     = color.new(#0f172a, 30),
      frame_width = 0)
 
-sma20_above_sma200 = sma20 > sma200
-sma20_below_sma200 = sma20 < sma200
+sma20_above_sma50 = sma20 > sma50
+sma20_below_sma50 = sma20 < sma50
 
 if barstate.islast and show_table
-    table.cell(info, 0, 0, '20 SMA / 200 SMA', text_color=color.gray, text_size=size.tiny)
-    table.cell(info, 1, 0, sma20_above_sma200 ? 'BULL' : 'BEAR',
-               text_color=sma20_above_sma200 ? #22c55e : #ef4444, text_size=size.tiny)
+    table.cell(info, 0, 0, '20 SMA / 50 SMA', text_color=color.gray, text_size=size.tiny)
+    table.cell(info, 1, 0, sma20_above_sma50 ? 'BULL' : 'BEAR',
+               text_color=sma20_above_sma50 ? #22c55e : #ef4444, text_size=size.tiny)
 
     table.cell(info, 0, 1, 'Trendilo',         text_color=color.gray, text_size=size.tiny)
     table.cell(info, 1, 1, trend_up ? 'UP' : trend_down ? 'DOWN' : '—',
