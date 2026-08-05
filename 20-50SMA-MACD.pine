@@ -1,0 +1,111 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Disclaimer:
+//The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
+//Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
+
+//@version=6
+indicator('20/50 SMA Cross + MACD', overlay=true)
+
+// ═══════════════════════════════════════════════════════════
+// INPUTS
+// ═══════════════════════════════════════════════════════════
+
+// ── Moving Averages ─────────────────────────────────────────
+sma_fast_len = input.int(20,  'Fast SMA Length',  minval=1, group='Moving Averages')
+sma_slow_len = input.int(50, 'Slow SMA Length',  minval=1, group='Moving Averages')
+
+// ── MACD ────────────────────────────────────────────────────
+float  sourceInput  = input.source(close, 'Source', group='MACD')
+int    fastLenInput = input.int(12, 'Fast length',   1, group='MACD')
+int    slowLenInput = input.int(26, 'Slow length',   1, group='MACD')
+int    sigLenInput  = input.int(9,  'Signal length', 1, group='MACD')
+string oscTypeInput = input.string('EMA', 'Oscillator MA type', ['EMA', 'SMA'], display = display.none, group='MACD')
+string sigTypeInput = input.string('EMA', 'Signal MA type',     ['EMA', 'SMA'], display = display.none, group='MACD')
+
+// ── Display ──────────────────────────────────────────────────
+show_fast_sma = input.bool(true, 'Show 20 SMA', group='Display')
+show_slow_sma = input.bool(true, 'Show 50 SMA', group='Display')
+show_bg       = input.bool(true, 'Trend Background', group='Display')
+show_arrows   = input.bool(true, 'Signal Arrows',    group='Display')
+show_table    = input.bool(true, 'Info Table',       group='Display')
+
+// ═══════════════════════════════════════════════════════════
+// CALCULATIONS
+// ═══════════════════════════════════════════════════════════
+
+sma20  = ta.sma(close, sma_fast_len)
+sma50  = ta.sma(close, sma_slow_len)
+
+// @function    Calculates an EMA or SMA of a `source` series.
+ma(float source, int length, simple string maType) =>
+    switch maType
+        'EMA' => ta.ema(source, length)
+        'SMA' => ta.sma(source, length)
+
+// MACD
+float maFast = ma(sourceInput, fastLenInput, oscTypeInput)
+float maSlow = ma(sourceInput, slowLenInput, oscTypeInput)
+float macd   = maFast - maSlow
+float signal = ma(macd, sigLenInput, sigTypeInput)
+float hist   = macd - signal
+
+trend_up   = hist >= 0
+trend_down = hist < 0
+
+// Signals: MACD direction + price above/below both SMAs.
+long_setup  = trend_up   and close > sma20 and close > sma50
+short_setup = trend_down and close < sma20 and close < sma50
+
+// Plot arrows only on the bar the setup starts.
+long_cond  = long_setup  and not long_setup[1]
+short_cond = short_setup and not short_setup[1]
+
+// ═══════════════════════════════════════════════════════════
+// PLOTS
+// ═══════════════════════════════════════════════════════════
+
+// Trend background — green in long setup, red in short setup.
+bg_color = long_setup  ? color.new(#22c55e, 92)
+         : short_setup ? color.new(#ef4444, 92)
+         : na
+bgcolor(show_bg ? bg_color : na, title='Trend Background')
+
+// Moving averages: clean, thin lines.
+plot(show_fast_sma ? sma20 : na, title='20 SMA', color=color.new(#f59e0b, 0), linewidth=1)
+plot(show_slow_sma ? sma50 : na, title='50 SMA', color=color.new(#3b82f6, 0), linewidth=2)
+
+// Minimal arrows: no text, small size.
+plotshape(long_cond  and show_arrows, title='Long Signal',
+     style=shape.triangleup, location=location.belowbar,
+     color=color.new(#22c55e, 0), size=size.small, text='')
+
+plotshape(short_cond and show_arrows, title='Short Signal',
+     style=shape.triangledown, location=location.abovebar,
+     color=color.new(#ef4444, 0), size=size.small, text='')
+
+// Bar color from MACD direction.
+barcolor(color=trend_up ? color.lime : trend_down ? color.red : color.gray)
+
+// ═══════════════════════════════════════════════════════════
+// INFO TABLE  (bottom-right)
+// ═══════════════════════════════════════════════════════════
+
+var table info = table.new(position.bottom_right, 2, 3,
+     bgcolor     = color.new(#0f172a, 30),
+     frame_width = 0)
+
+sma20_above_sma50 = sma20 > sma50
+sma20_below_sma50 = sma20 < sma50
+
+if barstate.islast and show_table
+    table.cell(info, 0, 0, '20 SMA / 50 SMA', text_color=color.gray, text_size=size.tiny)
+    table.cell(info, 1, 0, sma20_above_sma50 ? 'BULL' : 'BEAR',
+               text_color=sma20_above_sma50 ? #22c55e : #ef4444, text_size=size.tiny)
+
+    table.cell(info, 0, 1, 'MACD',              text_color=color.gray, text_size=size.tiny)
+    table.cell(info, 1, 1, trend_up ? 'UP' : trend_down ? 'DOWN' : '—',
+               text_color=trend_up ? #22c55e : trend_down ? #ef4444 : color.gray, text_size=size.tiny)
+
+    table.cell(info, 0, 2, 'Signal',            text_color=color.gray, text_size=size.tiny)
+    table.cell(info, 1, 2, long_cond ? 'LONG' : short_cond ? 'SHORT' : '—',
+               text_color=long_cond ? #22c55e : short_cond ? #ef4444 : color.gray, text_size=size.tiny)
