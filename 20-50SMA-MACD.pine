@@ -49,10 +49,10 @@ float macd   = maFast - maSlow
 float signal = ma(macd, sigLenInput, sigTypeInput)
 float hist   = macd - signal
 
-trend_up   = hist >= 0
-trend_down = hist < 0
+trend_up   = macd >= 0
+trend_down = macd < 0
 
-// Signals: MACD direction + price above/below both SMAs.
+// Signals: MACD line above/below zero + price above/below both SMAs.
 long_setup  = trend_up   and close > sma20 and close > sma50
 short_setup = trend_down and close < sma20 and close < sma50
 
