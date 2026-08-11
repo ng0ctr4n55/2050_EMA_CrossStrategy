@@ -71,8 +71,8 @@ bg_color = long_setup  ? color.new(#22c55e, 92)
 bgcolor(show_bg ? bg_color : na, title='Trend Background')
 
 // Moving averages: clean, thin lines.
-plot(show_fast_sma ? sma20 : na, title='20 SMA', color=color.new(#f59e0b, 0), linewidth=1)
-plot(show_slow_sma ? sma50 : na, title='50 SMA', color=color.new(#3b82f6, 0), linewidth=2)
+plot(show_fast_sma ? sma20 : na, title='20 SMA', color=color.new(#90EE90, 0), linewidth=1)
+plot(show_slow_sma ? sma50 : na, title='50 SMA', color=color.new(#D8BFD8, 0), linewidth=2)
 
 // Minimal arrows: no text, small size.
 plotshape(long_cond  and show_arrows, title='Long Signal',
@@ -90,22 +90,33 @@ barcolor(color=trend_up ? color.lime : trend_down ? color.red : color.gray)
 // INFO TABLE  (bottom-right)
 // ═══════════════════════════════════════════════════════════
 
-var table info = table.new(position.bottom_right, 2, 3,
+var table info = table.new(position.bottom_right, 2, 5,
      bgcolor     = color.new(#0f172a, 30),
      frame_width = 0)
 
 sma20_above_sma50 = sma20 > sma50
 sma20_below_sma50 = sma20 < sma50
 
+close_vs_sma20 = close - sma20
+close_vs_sma50 = close - sma50
+
 if barstate.islast and show_table
-    table.cell(info, 0, 0, '20 SMA / 50 SMA', text_color=color.gray, text_size=size.tiny)
+    table.cell(info, 0, 0, '20 SMA / 50 SMA', text_color=color.gray, text_size=size.normal)
     table.cell(info, 1, 0, sma20_above_sma50 ? 'BULL' : 'BEAR',
-               text_color=sma20_above_sma50 ? #22c55e : #ef4444, text_size=size.tiny)
+               text_color=sma20_above_sma50 ? #22c55e : #ef4444, text_size=size.normal)
 
-    table.cell(info, 0, 1, 'MACD',              text_color=color.gray, text_size=size.tiny)
+    table.cell(info, 0, 1, 'MACD',              text_color=color.gray, text_size=size.normal)
     table.cell(info, 1, 1, trend_up ? 'UP' : trend_down ? 'DOWN' : '—',
-               text_color=trend_up ? #22c55e : trend_down ? #ef4444 : color.gray, text_size=size.tiny)
+               text_color=trend_up ? #22c55e : trend_down ? #ef4444 : color.gray, text_size=size.normal)
 
-    table.cell(info, 0, 2, 'Signal',            text_color=color.gray, text_size=size.tiny)
+    table.cell(info, 0, 2, 'Signal',            text_color=color.gray, text_size=size.normal)
     table.cell(info, 1, 2, long_cond ? 'LONG' : short_cond ? 'SHORT' : '—',
-               text_color=long_cond ? #22c55e : short_cond ? #ef4444 : color.gray, text_size=size.tiny)
+               text_color=long_cond ? #22c55e : short_cond ? #ef4444 : color.gray, text_size=size.normal)
+
+    table.cell(info, 0, 3, 'Close vs 20',       text_color=color.gray, text_size=size.normal)
+    table.cell(info, 1, 3, str.tostring(close_vs_sma20, format.mintick),
+               text_color=close_vs_sma20 >= 0 ? #22c55e : #ef4444, text_size=size.normal)
+
+    table.cell(info, 0, 4, 'Close vs 50',       text_color=color.gray, text_size=size.normal)
+    table.cell(info, 1, 4, str.tostring(close_vs_sma50, format.mintick),
+               text_color=close_vs_sma50 >= 0 ? #22c55e : #ef4444, text_size=size.normal)
