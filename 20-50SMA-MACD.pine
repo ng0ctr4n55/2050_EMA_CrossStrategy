@@ -52,13 +52,16 @@ float hist   = macd - signal
 trend_up   = macd >= 0
 trend_down = macd < 0
 
-// Signals: MACD line above/below zero + price above/below both SMAs.
-long_setup  = trend_up   and close > sma20 and close > sma50
-short_setup = trend_down and close < sma20 and close < sma50
+// Setup: SMA alignment + MACD line and signal both in the correct half.
+sma_bullish = sma20 > sma50
+sma_bearish = sma20 < sma50
 
-// Plot arrows only on the bar the setup starts.
-long_cond  = long_setup  and not long_setup[1]
-short_cond = short_setup and not short_setup[1]
+long_setup  = sma_bullish and macd > 0 and signal > 0
+short_setup = sma_bearish and macd < 0 and signal < 0
+
+// Signal: setup + MACD line crosses the signal line this tick.
+long_cond  = long_setup  and ta.crossover(macd, signal)
+short_cond = short_setup and ta.crossunder(macd, signal)
 
 // ═══════════════════════════════════════════════════════════
 // PLOTS
