@@ -30,8 +30,8 @@ float  sourceInput  = input.source(close, 'Source', group='MACD')
 int    fastLenInput = input.int(12, 'Fast length',   1, group='MACD')
 int    slowLenInput = input.int(26, 'Slow length',   1, group='MACD')
 int    sigLenInput  = input.int(9,  'Signal length', 1, group='MACD')
-string oscTypeInput = input.string('EMA', 'Oscillator MA type', ['EMA', 'SMA'], display = display.pane, group='MACD')
-string sigTypeInput = input.string('EMA', 'Signal MA type',     ['EMA', 'SMA'], display = display.pane, group='MACD')
+string oscTypeInput = input.string('EMA', 'Oscillator MA type', ['EMA', 'SMA'], group='MACD')
+string sigTypeInput = input.string('EMA', 'Signal MA type',     ['EMA', 'SMA'], group='MACD')
 
 // ── Display ──────────────────────────────────────────────────
 show_fast_sma = input.bool(true, 'Show 20 SMA', group='Display')
