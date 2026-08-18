@@ -7,6 +7,17 @@
 indicator('20/50 SMA Cross + MACD', overlay=true)
 
 // ═══════════════════════════════════════════════════════════
+// COLOR CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const color LONG_C       = #22c55e   // bullish / up-trend
+const color SHORT_C      = #ef4444   // bearish / down-trend
+const color NEUTRAL_C    = color.gray
+const color FAST_SMA_C   = #90EE90   // 20 SMA (light green)
+const color SLOW_SMA_C   = #D8BFD8   // 50 SMA (thistle)
+const color TABLE_BG_C   = #0f172a   // info table background
+const color TABLE_TEXT_C = color.gray // info table labels
+
+// ═══════════════════════════════════════════════════════════
 // INPUTS
 // ═══════════════════════════════════════════════════════════
 
@@ -19,8 +30,8 @@ float  sourceInput  = input.source(close, 'Source', group='MACD')
 int    fastLenInput = input.int(12, 'Fast length',   1, group='MACD')
 int    slowLenInput = input.int(26, 'Slow length',   1, group='MACD')
 int    sigLenInput  = input.int(9,  'Signal length', 1, group='MACD')
-string oscTypeInput = input.string('EMA', 'Oscillator MA type', ['EMA', 'SMA'], display = display.none, group='MACD')
-string sigTypeInput = input.string('EMA', 'Signal MA type',     ['EMA', 'SMA'], display = display.none, group='MACD')
+string oscTypeInput = input.string('EMA', 'Oscillator MA type', ['EMA', 'SMA'], display = display.pane, group='MACD')
+string sigTypeInput = input.string('EMA', 'Signal MA type',     ['EMA', 'SMA'], display = display.pane, group='MACD')
 
 // ── Display ──────────────────────────────────────────────────
 show_fast_sma = input.bool(true, 'Show 20 SMA', group='Display')
@@ -59,32 +70,43 @@ sma_bearish = sma20 < sma50
 long_setup  = sma_bullish and macd > 0 and signal > 0
 short_setup = sma_bearish and macd < 0 and signal < 0
 
-// Signal: setup + MACD line crosses the signal line this tick.
-long_cond  = long_setup  and ta.crossover(macd, signal)
-short_cond = short_setup and ta.crossunder(macd, signal)
+// Signal: 20/50 SMA cross + MACD line threshold.
+long_cond  = ta.crossover(sma20, sma50) and macd > 5
+short_cond = ta.crossunder(sma20, sma50) and macd < 5
 
 // ═══════════════════════════════════════════════════════════
 // PLOTS
 // ═══════════════════════════════════════════════════════════
 
 // Trend background — green in long setup, red in short setup.
-bg_color = long_setup  ? color.new(#22c55e, 92)
-         : short_setup ? color.new(#ef4444, 92)
+bg_color = long_setup  ? color.new(LONG_C, 92)
+         : short_setup ? color.new(SHORT_C, 92)
          : na
 bgcolor(show_bg ? bg_color : na, title='Trend Background')
 
 // Moving averages: clean, thin lines.
-plot(show_fast_sma ? sma20 : na, title='20 SMA', color=color.new(#90EE90, 0), linewidth=1)
-plot(show_slow_sma ? sma50 : na, title='50 SMA', color=color.new(#D8BFD8, 0), linewidth=2)
+plot(show_fast_sma ? sma20 : na, title='20 SMA', color=color.new(FAST_SMA_C, 0), linewidth=1)
+plot(show_slow_sma ? sma50 : na, title='50 SMA', color=color.new(SLOW_SMA_C, 0), linewidth=2)
 
 // Minimal arrows: no text, small size.
 plotshape(long_cond  and show_arrows, title='Long Signal',
      style=shape.triangleup, location=location.belowbar,
-     color=color.new(#22c55e, 0), size=size.small, text='')
+     color=color.new(LONG_C, 0), size=size.small, text='')
 
 plotshape(short_cond and show_arrows, title='Short Signal',
      style=shape.triangledown, location=location.abovebar,
-     color=color.new(#ef4444, 0), size=size.small, text='')
+     color=color.new(SHORT_C, 0), size=size.small, text='')
+
+// ═══════════════════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════════════════
+// alertcondition fires whenever the signal is true, regardless of the
+// 'Signal Arrows' display toggle — users can mute the arrows but still
+// receive alerts.
+
+alertcondition(long_cond,  title='SMA+MACD Long',  message='20/50 SMA Cross + MACD — LONG signal on {{ticker}} ({{interval}})')
+alertcondition(short_cond, title='SMA+MACD Short', message='20/50 SMA Cross + MACD — SHORT signal on {{ticker}} ({{interval}})')
+alertcondition(long_cond or short_cond, title='SMA+MACD Any', message='20/50 SMA Cross + MACD — signal on {{ticker}} ({{interval}})')
 
 // Bar color from MACD direction.
 barcolor(color=trend_up ? color.lime : trend_down ? color.red : color.gray)
@@ -93,8 +115,8 @@ barcolor(color=trend_up ? color.lime : trend_down ? color.red : color.gray)
 // INFO TABLE  (bottom-right)
 // ═══════════════════════════════════════════════════════════
 
-var table info = table.new(position.bottom_right, 2, 5,
-     bgcolor     = color.new(#0f172a, 30),
+var table info = table.new(position.bottom_right, 2, 6,
+     bgcolor     = color.new(TABLE_BG_C, 30),
      frame_width = 0)
 
 sma20_above_sma50 = sma20 > sma50
@@ -104,22 +126,26 @@ close_vs_sma20 = close - sma20
 close_vs_sma50 = close - sma50
 
 if barstate.islast and show_table
-    table.cell(info, 0, 0, '20 SMA / 50 SMA', text_color=color.gray, text_size=size.normal)
+    table.cell(info, 0, 0, '20 SMA / 50 SMA', text_color=TABLE_TEXT_C, text_size=size.normal)
     table.cell(info, 1, 0, sma20_above_sma50 ? 'BULL' : 'BEAR',
-               text_color=sma20_above_sma50 ? #22c55e : #ef4444, text_size=size.normal)
+               text_color=sma20_above_sma50 ? LONG_C : SHORT_C, text_size=size.normal)
 
-    table.cell(info, 0, 1, 'MACD',              text_color=color.gray, text_size=size.normal)
+    table.cell(info, 0, 1, 'MACD',              text_color=TABLE_TEXT_C, text_size=size.normal)
     table.cell(info, 1, 1, trend_up ? 'UP' : trend_down ? 'DOWN' : '—',
-               text_color=trend_up ? #22c55e : trend_down ? #ef4444 : color.gray, text_size=size.normal)
+               text_color=trend_up ? LONG_C : trend_down ? SHORT_C : NEUTRAL_C, text_size=size.normal)
 
-    table.cell(info, 0, 2, 'Signal',            text_color=color.gray, text_size=size.normal)
-    table.cell(info, 1, 2, long_cond ? 'LONG' : short_cond ? 'SHORT' : '—',
-               text_color=long_cond ? #22c55e : short_cond ? #ef4444 : color.gray, text_size=size.normal)
+    table.cell(info, 0, 2, 'MACD Value',        text_color=TABLE_TEXT_C, text_size=size.normal)
+    table.cell(info, 1, 2, str.tostring(macd, format.mintick),
+               text_color=macd >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
 
-    table.cell(info, 0, 3, 'Close vs 20',       text_color=color.gray, text_size=size.normal)
-    table.cell(info, 1, 3, str.tostring(close_vs_sma20, format.mintick),
-               text_color=close_vs_sma20 >= 0 ? #22c55e : #ef4444, text_size=size.normal)
+    table.cell(info, 0, 3, 'Signal',            text_color=TABLE_TEXT_C, text_size=size.normal)
+    table.cell(info, 1, 3, long_cond ? 'LONG' : short_cond ? 'SHORT' : '—',
+               text_color=long_cond ? LONG_C : short_cond ? SHORT_C : NEUTRAL_C, text_size=size.normal)
 
-    table.cell(info, 0, 4, 'Close vs 50',       text_color=color.gray, text_size=size.normal)
-    table.cell(info, 1, 4, str.tostring(close_vs_sma50, format.mintick),
-               text_color=close_vs_sma50 >= 0 ? #22c55e : #ef4444, text_size=size.normal)
+    table.cell(info, 0, 4, 'Close vs 20',       text_color=TABLE_TEXT_C, text_size=size.normal)
+    table.cell(info, 1, 4, str.tostring(close_vs_sma20, format.mintick),
+               text_color=close_vs_sma20 >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
+
+    table.cell(info, 0, 5, 'Close vs 50',       text_color=TABLE_TEXT_C, text_size=size.normal)
+    table.cell(info, 1, 5, str.tostring(close_vs_sma50, format.mintick),
+               text_color=close_vs_sma50 >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
