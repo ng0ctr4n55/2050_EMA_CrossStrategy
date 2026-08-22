@@ -67,8 +67,8 @@ downtrend_squeeze = sma200 > close and close > sma20   // price between slow (ab
 in_squeeze        = uptrend_squeeze or downtrend_squeeze
 squeeze_state     = uptrend_squeeze ? 'UP SQZ' : downtrend_squeeze ? 'DN SQZ' : '—'
 
-trend_up   = macd >= 5
-trend_down = macd < -5
+trend_up   = close > sma200 and macd > 5
+trend_down = close < sma200 and macd < -5
 
 sma_bullish = sma20 > sma200
 sma_bearish = sma20 < sma200
@@ -95,16 +95,16 @@ bgcolor(show_bg ? bg_color : na, title='Trend Background')
 plot(show_fast_sma ? sma20 : na, title='20 SMA', color=color.new(FAST_SMA_C, 0), linewidth=2)
 plot(show_slow_sma ? sma200 : na, title='200 SMA', color=color.new(SLOW_SMA_C, 0), linewidth=3)
 
-// // Signal arrows with text labels on the triggering candle.
-// plotshape(long_setup  and show_arrows, title='Long Signal',
-//      style=shape.triangleup, location=location.belowbar,
-//      color=color.new(LONG_C, 0), size=size.small, text='LONG',
-//      textcolor=color.new(LONG_C, 0))
+// Signal arrows with text labels on the triggering candle.
+plotshape(long_setup  and show_arrows, title='Long Signal',
+     style=shape.triangleup, location=location.belowbar,
+     color=color.new(LONG_C, 0), 
+     textcolor=color.new(LONG_C, 0))
 
-// plotshape(short_setup and show_arrows, title='Short Signal',
-//      style=shape.triangledown, location=location.abovebar,
-//      color=color.new(SHORT_C, 0), size=size.small, text='SHORT',
-//      textcolor=color.new(SHORT_C, 0))
+plotshape(short_setup and show_arrows, title='Short Signal',
+     style=shape.triangledown, location=location.abovebar,
+     color=color.new(SHORT_C, 0), 
+     textcolor=color.new(SHORT_C, 0))
 
 // ═══════════════════════════════════════════════════════════
 // ALERTS
