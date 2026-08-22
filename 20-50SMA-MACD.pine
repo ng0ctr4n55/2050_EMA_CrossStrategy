@@ -4,7 +4,7 @@
 //Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
 
 //@version=6
-indicator('20/50 SMA Cross + MACD', overlay=true)
+indicator('20/200 SMA Cross + MACD', overlay=true)
 
 // ═══════════════════════════════════════════════════════════
 // COLOR CONSTANTS
@@ -12,8 +12,8 @@ indicator('20/50 SMA Cross + MACD', overlay=true)
 const color LONG_C       = #22c55e   // bullish / up-trend
 const color SHORT_C      = #ef4444   // bearish / down-trend
 const color NEUTRAL_C    = color.gray
-const color FAST_SMA_C   = #90EE90   // 20 SMA (light green)
-const color SLOW_SMA_C   = #D8BFD8   // 50 SMA (thistle)
+const color FAST_SMA_C   = #00ff00   // 20 SMA (light green)
+const color SLOW_SMA_C   = #ffea00   // 200 SMA (thistle)
 const color TABLE_BG_C   = #0f172a   // info table background
 const color TABLE_TEXT_C = color.gray // info table labels
 
@@ -23,7 +23,7 @@ const color TABLE_TEXT_C = color.gray // info table labels
 
 // ── Moving Averages ─────────────────────────────────────────
 sma_fast_len = input.int(20,  'Fast SMA Length',  minval=1, group='Moving Averages')
-sma_slow_len = input.int(50, 'Slow SMA Length',  minval=1, group='Moving Averages')
+sma_slow_len = input.int(200, 'Slow SMA Length',  minval=1, group='Moving Averages')
 
 // ── MACD ────────────────────────────────────────────────────
 float  sourceInput  = input.source(close, 'Source', group='MACD')
@@ -35,7 +35,7 @@ string sigTypeInput = input.string('EMA', 'Signal MA type',     ['EMA', 'SMA'], 
 
 // ── Display ──────────────────────────────────────────────────
 show_fast_sma = input.bool(true, 'Show 20 SMA', group='Display')
-show_slow_sma = input.bool(true, 'Show 50 SMA', group='Display')
+show_slow_sma = input.bool(true, 'Show 200 SMA', group='Display')
 show_bg       = input.bool(true, 'Trend Background', group='Display')
 show_arrows   = input.bool(true, 'Signal Arrows',    group='Display')
 show_table    = input.bool(true, 'Info Table',       group='Display')
@@ -45,7 +45,7 @@ show_table    = input.bool(true, 'Info Table',       group='Display')
 // ═══════════════════════════════════════════════════════════
 
 sma20  = ta.sma(close, sma_fast_len)
-sma50  = ta.sma(close, sma_slow_len)
+sma200 = ta.sma(close, sma_slow_len)
 
 // @function    Calculates an EMA or SMA of a `source` series.
 ma(float source, int length, simple string maType) =>
@@ -64,15 +64,26 @@ trend_up   = macd >= 0
 trend_down = macd < 0
 
 // Setup: SMA alignment + MACD line and signal both in the correct half.
-sma_bullish = sma20 > sma50
-sma_bearish = sma20 < sma50
+sma_bullish = sma20 > sma200
+sma_bearish = sma20 < sma200
 
 long_setup  = sma_bullish and macd > 0 and signal > 0
 short_setup = sma_bearish and macd < 0 and signal < 0
 
-// Signal: 20/50 SMA cross + MACD line threshold.
-long_cond  = ta.crossover(sma20, sma50) and macd > 5
-short_cond = ta.crossunder(sma20, sma50) and macd < 5
+// Signal: LONG — uptrend alignment, price squeezed between SMAs, MACD >= 5,
+// and close not within ±7 of either SMA.
+price_between_smas_long  = sma200 < close and close < sma20
+away_from_sma20_long     = math.abs(close - sma20) > 7
+away_from_sma200_long    = math.abs(close - sma200) > 7
+
+// Signal: SHORT — downtrend alignment, price squeezed between SMAs, MACD <= -5,
+// and close not within ±7 of either SMA.
+price_between_smas_short = sma20 < close and close < sma200
+away_from_sma20_short    = math.abs(close - sma20) > 7
+away_from_sma200_short   = math.abs(close - sma200) > 7
+
+long_cond  = sma_bullish and price_between_smas_long and macd >= 5 and away_from_sma20_long and away_from_sma200_long
+short_cond = sma_bearish and price_between_smas_short and macd <= -5 and away_from_sma20_short and away_from_sma200_short
 
 // ═══════════════════════════════════════════════════════════
 // PLOTS
@@ -86,7 +97,7 @@ bgcolor(show_bg ? bg_color : na, title='Trend Background')
 
 // Moving averages: clean, thin lines.
 plot(show_fast_sma ? sma20 : na, title='20 SMA', color=color.new(FAST_SMA_C, 0), linewidth=1)
-plot(show_slow_sma ? sma50 : na, title='50 SMA', color=color.new(SLOW_SMA_C, 0), linewidth=2)
+plot(show_slow_sma ? sma200 : na, title='200 SMA', color=color.new(SLOW_SMA_C, 0), linewidth=2)
 
 // Minimal arrows: no text, small size.
 plotshape(long_cond  and show_arrows, title='Long Signal',
@@ -104,9 +115,9 @@ plotshape(short_cond and show_arrows, title='Short Signal',
 // 'Signal Arrows' display toggle — users can mute the arrows but still
 // receive alerts.
 
-alertcondition(long_cond,  title='SMA+MACD Long',  message='20/50 SMA Cross + MACD — LONG signal on {{ticker}} ({{interval}})')
-alertcondition(short_cond, title='SMA+MACD Short', message='20/50 SMA Cross + MACD — SHORT signal on {{ticker}} ({{interval}})')
-alertcondition(long_cond or short_cond, title='SMA+MACD Any', message='20/50 SMA Cross + MACD — signal on {{ticker}} ({{interval}})')
+alertcondition(long_cond,  title='SMA+MACD Long',  message='20/200 SMA Cross + MACD — LONG signal on {{ticker}} ({{interval}})')
+alertcondition(short_cond, title='SMA+MACD Short', message='20/200 SMA Cross + MACD — SHORT signal on {{ticker}} ({{interval}})')
+alertcondition(long_cond or short_cond, title='SMA+MACD Any', message='20/200 SMA Cross + MACD — signal on {{ticker}} ({{interval}})')
 
 // Bar color from MACD direction.
 barcolor(color=trend_up ? color.lime : trend_down ? color.red : color.gray)
@@ -119,16 +130,16 @@ var table info = table.new(position.bottom_right, 2, 6,
      bgcolor     = color.new(TABLE_BG_C, 30),
      frame_width = 0)
 
-sma20_above_sma50 = sma20 > sma50
-sma20_below_sma50 = sma20 < sma50
+sma20_above_sma200 = sma20 > sma200
+sma20_below_sma200 = sma20 < sma200
 
-close_vs_sma20 = close - sma20
-close_vs_sma50 = close - sma50
+close_vs_sma20  = close - sma20
+close_vs_sma200 = close - sma200
 
 if barstate.islast and show_table
-    table.cell(info, 0, 0, '20 SMA / 50 SMA', text_color=TABLE_TEXT_C, text_size=size.normal)
-    table.cell(info, 1, 0, sma20_above_sma50 ? 'BULL' : 'BEAR',
-               text_color=sma20_above_sma50 ? LONG_C : SHORT_C, text_size=size.normal)
+    table.cell(info, 0, 0, '20 SMA / 200 SMA', text_color=TABLE_TEXT_C, text_size=size.normal)
+    table.cell(info, 1, 0, sma20_above_sma200 ? 'BULL' : 'BEAR',
+               text_color=sma20_above_sma200 ? LONG_C : SHORT_C, text_size=size.normal)
 
     table.cell(info, 0, 1, 'MACD',              text_color=TABLE_TEXT_C, text_size=size.normal)
     table.cell(info, 1, 1, trend_up ? 'UP' : trend_down ? 'DOWN' : '—',
@@ -146,6 +157,6 @@ if barstate.islast and show_table
     table.cell(info, 1, 4, str.tostring(close_vs_sma20, format.mintick),
                text_color=close_vs_sma20 >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
 
-    table.cell(info, 0, 5, 'Close vs 50',       text_color=TABLE_TEXT_C, text_size=size.normal)
-    table.cell(info, 1, 5, str.tostring(close_vs_sma50, format.mintick),
-               text_color=close_vs_sma50 >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
+    table.cell(info, 0, 5, 'Close vs 200',      text_color=TABLE_TEXT_C, text_size=size.normal)
+    table.cell(info, 1, 5, str.tostring(close_vs_sma200, format.mintick),
+               text_color=close_vs_sma200 >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
