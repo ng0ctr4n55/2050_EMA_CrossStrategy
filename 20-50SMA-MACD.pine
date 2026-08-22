@@ -98,13 +98,15 @@ plot(show_slow_sma ? sma200 : na, title='200 SMA', color=color.new(SLOW_SMA_C, 0
 // Signal arrows with text labels on the triggering candle.
 plotshape(long_setup  and show_arrows, title='Long Signal',
      style=shape.triangleup, location=location.belowbar,
-     color=color.new(LONG_C, 0), 
-     textcolor=color.new(LONG_C, 0))
+     color=color.new(LONG_C, 0),
+     text='Long', textcolor=color.new(LONG_C, 0),
+     size=size.normal)
 
 plotshape(short_setup and show_arrows, title='Short Signal',
      style=shape.triangledown, location=location.abovebar,
-     color=color.new(SHORT_C, 0), 
-     textcolor=color.new(SHORT_C, 0))
+     color=color.new(SHORT_C, 0),
+     text='Short', textcolor=color.new(SHORT_C, 0),
+     size=size.normal)
 
 // ═══════════════════════════════════════════════════════════
 // ALERTS
