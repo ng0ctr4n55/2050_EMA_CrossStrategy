@@ -32,7 +32,6 @@ int    slowLenInput = input.int(26, 'Slow length',   1, group='MACD')
 int    sigLenInput  = input.int(9,  'Signal length', 1, group='MACD')
 string oscTypeInput = input.string('EMA', 'Oscillator MA type', ['EMA', 'SMA'], group='MACD')
 string sigTypeInput = input.string('EMA', 'Signal MA type',     ['EMA', 'SMA'], group='MACD')
-float  sigThrInput  = input.float(5.0, 'Signal threshold',     minval=0, step=0.5, group='MACD')
 
 // ── Display ──────────────────────────────────────────────────
 show_fast_sma = input.bool(true, 'Show 20 SMA', group='Display')
@@ -59,6 +58,7 @@ float maFast = ma(sourceInput, fastLenInput, oscTypeInput)
 float maSlow = ma(sourceInput, slowLenInput, oscTypeInput)
 float macd   = maFast - maSlow
 float signal = ma(macd, sigLenInput, sigTypeInput)
+float hist   = macd - signal
 
 // Squeeze zone: price compressed between the 20 SMA and 200 SMA.
 uptrend_squeeze   = sma200 < close and close < sma20   // price between slow (below) and fast (above)
@@ -67,43 +67,44 @@ downtrend_squeeze = sma200 > close and close > sma20   // price between slow (ab
 in_squeeze        = uptrend_squeeze or downtrend_squeeze
 squeeze_state     = uptrend_squeeze ? 'UP SQZ' : downtrend_squeeze ? 'DN SQZ' : '—'
 
-trend_up   = macd >= 0
-trend_down = macd < 0
+trend_up   = macd >= 5
+trend_down = macd < -5
 
-// Long setup: 20 SMA above last close, last close above 200 SMA, MACD line above signal line, signal > threshold.
-long_setup  = sma20 > close and close > sma200 and macd > signal and signal > sigThrInput
-// Short setup: 20 SMA below last close, last close below 200 SMA, MACD line below signal line, signal < -threshold.
-short_setup = sma20 < close and close < sma200 and macd < signal and signal < -sigThrInput
+sma_bullish = sma20 > sma200
+sma_bearish = sma20 < sma200
 
-long_cond  = ta.crossover(long_setup  ? 1 : 0, 0.5)
-short_cond = ta.crossover(short_setup ? 1 : 0, 0.5)
+// Long setup: 20 SMA above last close, last close above 200 SMA, MACD line above signal line, signal > 0.
+long_setup  = sma20 < close and close > sma200 and macd > 5
+// Short setup: 20 SMA below last close, last close below 200 SMA, MACD line below signal line, signal < 0.
+short_setup = sma20 > close and close < sma200 and macd < -5
 
-signal_state = long_cond ? 'LONG' : short_cond ? 'SHORT' : nz(signal_state[1], '—')
+long_cond  = long_setup
+short_cond = short_setup
 
 // ═══════════════════════════════════════════════════════════
 // PLOTS
 // ═══════════════════════════════════════════════════════════
 
-// Trend background — highlight only the candle that triggers the setup.
-bg_color = long_cond  ? color.new(LONG_C, 92)
-         : short_cond ? color.new(SHORT_C, 92)
+// Trend background — green in long setup, red in short setup.
+bg_color = long_setup  ? color.new(LONG_C, 92)
+         : short_setup ? color.new(SHORT_C, 92)
          : na
-bgcolor(show_bg ? bg_color : na, title='Trigger Background')
+bgcolor(show_bg ? bg_color : na, title='Trend Background')
 
 // Moving averages: clean, thin lines.
-plot(show_fast_sma ? sma20 : na, title='20 SMA', color=color.new(FAST_SMA_C, 0), linewidth=1)
-plot(show_slow_sma ? sma200 : na, title='200 SMA', color=color.new(SLOW_SMA_C, 0), linewidth=2)
+plot(show_fast_sma ? sma20 : na, title='20 SMA', color=color.new(FAST_SMA_C, 0), linewidth=2)
+plot(show_slow_sma ? sma200 : na, title='200 SMA', color=color.new(SLOW_SMA_C, 0), linewidth=3)
 
-// Signal arrows with text labels on the triggering candle.
-plotshape(long_cond  and show_arrows, title='Long Signal',
-     style=shape.triangleup, location=location.belowbar,
-     color=color.new(LONG_C, 0), size=size.small, text='LONG',
-     textcolor=color.new(LONG_C, 0))
+// // Signal arrows with text labels on the triggering candle.
+// plotshape(long_setup  and show_arrows, title='Long Signal',
+//      style=shape.triangleup, location=location.belowbar,
+//      color=color.new(LONG_C, 0), size=size.small, text='LONG',
+//      textcolor=color.new(LONG_C, 0))
 
-plotshape(short_cond and show_arrows, title='Short Signal',
-     style=shape.triangledown, location=location.abovebar,
-     color=color.new(SHORT_C, 0), size=size.small, text='SHORT',
-     textcolor=color.new(SHORT_C, 0))
+// plotshape(short_setup and show_arrows, title='Short Signal',
+//      style=shape.triangledown, location=location.abovebar,
+//      color=color.new(SHORT_C, 0), size=size.small, text='SHORT',
+//      textcolor=color.new(SHORT_C, 0))
 
 // ═══════════════════════════════════════════════════════════
 // ALERTS
@@ -115,7 +116,6 @@ plotshape(short_cond and show_arrows, title='Short Signal',
 alertcondition(long_cond,  title='SMA+MACD Long',  message='20/200 SMA Cross + MACD — LONG signal on {{ticker}} ({{interval}})')
 alertcondition(short_cond, title='SMA+MACD Short', message='20/200 SMA Cross + MACD — SHORT signal on {{ticker}} ({{interval}})')
 alertcondition(long_cond or short_cond, title='SMA+MACD Any', message='20/200 SMA Cross + MACD — signal on {{ticker}} ({{interval}})')
-alertcondition(in_squeeze, title='SMA Squeeze',    message='20/200 SMA Cross + MACD — SQUEEZE zone on {{ticker}} ({{interval}})')
 
 // Bar color from MACD direction.
 barcolor(color=trend_up ? color.lime : trend_down ? color.red : color.gray)
@@ -130,20 +130,20 @@ var table info = table.new(position.bottom_right, 2, 7,
 
 if barstate.islast and show_table
     table.cell(info, 0, 0, 'Signal',            text_color=TABLE_TEXT_C, text_size=size.normal)
-    table.cell(info, 1, 0, signal_state,
-               text_color=signal_state == 'LONG' ? LONG_C : signal_state == 'SHORT' ? SHORT_C : NEUTRAL_C, text_size=size.normal)
+    table.cell(info, 1, 0, long_cond ? 'LONG' : short_cond ? 'SHORT' : '—',
+               text_color=long_cond ? LONG_C : short_cond ? SHORT_C : NEUTRAL_C, text_size=size.normal)
 
     table.cell(info, 0, 1, 'Close',             text_color=TABLE_TEXT_C, text_size=size.normal)
     table.cell(info, 1, 1, str.tostring(close, format.mintick),
-               text_color=close >= sma20 ? LONG_C : SHORT_C, text_size=size.normal)
+               text_color=close >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
 
     table.cell(info, 0, 2, '20 SMA',            text_color=TABLE_TEXT_C, text_size=size.normal)
     table.cell(info, 1, 2, str.tostring(sma20, format.mintick),
-               text_color=sma20 >= sma200 ? LONG_C : SHORT_C, text_size=size.normal)
+               text_color=sma20 >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
 
     table.cell(info, 0, 3, '200 SMA',           text_color=TABLE_TEXT_C, text_size=size.normal)
     table.cell(info, 1, 3, str.tostring(sma200, format.mintick),
-               text_color=sma200 <= close ? LONG_C : SHORT_C, text_size=size.normal)
+               text_color=sma200 >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
 
     table.cell(info, 0, 4, 'MACD',              text_color=TABLE_TEXT_C, text_size=size.normal)
     table.cell(info, 1, 4, str.tostring(macd, format.mintick),
