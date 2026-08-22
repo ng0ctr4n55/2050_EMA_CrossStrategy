@@ -63,27 +63,16 @@ float hist   = macd - signal
 trend_up   = macd >= 0
 trend_down = macd < 0
 
-// Setup: SMA alignment + MACD line and signal both in the correct half.
 sma_bullish = sma20 > sma200
 sma_bearish = sma20 < sma200
 
-long_setup  = sma_bullish and macd > 0 and signal > 0
-short_setup = sma_bearish and macd < 0 and signal < 0
+// Long setup: close above 20 SMA, 20 SMA above 200 SMA, MACD line above signal line, signal > 5.
+long_setup  = close > sma20 and sma20 > sma200 and macd > signal and signal > 5
+// Short setup: close below 20 SMA, 20 SMA below 200 SMA, MACD line below signal line, signal < -5.
+short_setup = close < sma20 and sma20 < sma200 and macd < signal and signal < -5
 
-// Signal: LONG — uptrend alignment, price squeezed between SMAs, MACD >= 5,
-// and close not within ±7 of either SMA.
-price_between_smas_long  = sma200 < close and close < sma20
-away_from_sma20_long     = math.abs(close - sma20) > 7
-away_from_sma200_long    = math.abs(close - sma200) > 7
-
-// Signal: SHORT — downtrend alignment, price squeezed between SMAs, MACD <= -5,
-// and close not within ±7 of either SMA.
-price_between_smas_short = sma20 < close and close < sma200
-away_from_sma20_short    = math.abs(close - sma20) > 7
-away_from_sma200_short   = math.abs(close - sma200) > 7
-
-long_cond  = sma_bullish and price_between_smas_long and macd >= 5 and away_from_sma20_long and away_from_sma200_long
-short_cond = sma_bearish and price_between_smas_short and macd <= -5 and away_from_sma20_short and away_from_sma200_short
+long_cond  = long_setup
+short_cond = short_setup
 
 // ═══════════════════════════════════════════════════════════
 // PLOTS
