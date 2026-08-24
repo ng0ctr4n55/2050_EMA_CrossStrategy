@@ -86,11 +86,10 @@ bg_color = long_setup  ? color.new(LONG_C, 92)
 bgcolor(show_bg ? bg_color : na, title='Trend Background')
 
 // Bar coloring based on price vs 20/200 SMAs.
-bar_color = close < sma20 and sma20 < sma200 ? color.new(SHORT_C, 0)
-          : close > sma20 and sma20 > sma200 ? color.new(LONG_C, 0)
-          : close > sma200 and close < sma20  ? color.new(NEUTRAL_C, 0)
-          : close < sma200 and close > sma20  ? color.new(NEUTRAL_C, 0)
-          : na
+// Strong trend: price is on the same side of both SMAs as the SMA ordering.
+bar_color = close > sma20 and sma20 > sma200 ? color.new(LONG_C, 0)
+          : close < sma20 and sma20 < sma200 ? color.new(SHORT_C, 0)
+          : color.new(NEUTRAL_C, 0)
 barcolor(show_barcolor ? bar_color : na, title='SMA Bar Color')
 
 // Moving averages: clean, thin lines.
