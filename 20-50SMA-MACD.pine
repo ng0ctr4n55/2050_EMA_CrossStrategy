@@ -60,12 +60,16 @@ float maSlow = ma(sourceInput, slowLenInput, oscTypeInput)
 float macd   = maFast - maSlow
 float signal = ma(macd, sigLenInput, sigTypeInput)
 
+// Compute cross conditions globally so they execute on every bar.
+bool macdCrossUp   = ta.crossover(macd, signal)
+bool macdCrossDown = ta.crossunder(macd, signal)
+
 // Long setup: 20 SMA above 200 SMA, MACD crosses above its signal line,
 // and the signal line is above the positive threshold.
-long_setup  = sma20 > sma200 and ta.crossover(macd, signal) and signal > macd_threshold
+long_setup  = sma20 > sma200 and macdCrossUp and signal > macd_threshold
 // Short setup: 20 SMA below 200 SMA, MACD crosses below its signal line,
 // and the signal line is below the negative threshold.
-short_setup = sma20 < sma200 and ta.crossunder(macd, signal) and signal < -macd_threshold
+short_setup = sma20 < sma200 and macdCrossDown and signal < -macd_threshold
 
 long_signal  = long_setup
 short_signal = short_setup
