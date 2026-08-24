@@ -39,6 +39,7 @@ show_fast_sma = input.bool(true, 'Show 20 SMA', group='Display')
 show_slow_sma = input.bool(true, 'Show 200 SMA', group='Display')
 show_bg       = input.bool(true, 'Trend Background', group='Display')
 show_arrows   = input.bool(true, 'Signal Arrows',    group='Display')
+show_barcolor = input.bool(true, 'Bar Color',        group='Display')
 show_table    = input.bool(true, 'Info Table',       group='Display')
 
 // ═══════════════════════════════════════════════════════════
@@ -83,6 +84,14 @@ bg_color = long_setup  ? color.new(LONG_C, 92)
          : short_setup ? color.new(SHORT_C, 92)
          : na
 bgcolor(show_bg ? bg_color : na, title='Trend Background')
+
+// Bar coloring based on price vs 20/200 SMAs.
+bar_color = close < sma20 and sma20 < sma200 ? color.new(SHORT_C, 0)
+          : close > sma20 and sma20 > sma200 ? color.new(LONG_C, 0)
+          : close > sma200 and close < sma20  ? color.new(NEUTRAL_C, 0)
+          : close < sma200 and close > sma20  ? color.new(NEUTRAL_C, 0)
+          : na
+barcolor(show_barcolor ? bar_color : na, title='SMA Bar Color')
 
 // Moving averages: clean, thin lines.
 plot(show_fast_sma ? sma20 : na, title='20 SMA', color=color.new(FAST_SMA_C, 0), linewidth=2)
