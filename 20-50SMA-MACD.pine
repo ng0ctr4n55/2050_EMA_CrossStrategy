@@ -60,24 +60,15 @@ float maSlow = ma(sourceInput, slowLenInput, oscTypeInput)
 float macd   = maFast - maSlow
 float signal = ma(macd, sigLenInput, sigTypeInput)
 
-// Squeeze zone: price compressed between the 20 SMA and 200 SMA.
-uptrend_squeeze   = sma200 < close and close < sma20   // price between slow (below) and fast (above)
-downtrend_squeeze = sma200 > close and close > sma20   // price between slow (above) and fast (below)
+// Long setup: 20 SMA above 200 SMA, MACD crosses above its signal line,
+// and the signal line is above the positive threshold.
+long_setup  = sma20 > sma200 and ta.crossover(macd, signal) and signal > macd_threshold
+// Short setup: 20 SMA below 200 SMA, MACD crosses below its signal line,
+// and the signal line is below the negative threshold.
+short_setup = sma20 < sma200 and ta.crossunder(macd, signal) and signal < -macd_threshold
 
-squeeze_state     = uptrend_squeeze ? 'UP SQZ' : downtrend_squeeze ? 'DN SQZ' : '—'
-
-trend_up   = close > sma200 and macd > macd_threshold
-trend_down = close < sma200 and macd < -macd_threshold
-
-// Long setup: 20 SMA below last close, last close above 200 SMA, MACD above threshold.
-long_setup  = sma20 < close and close > sma200 and macd > signal and signal > macd_threshold
-// Short setup: 20 SMA above last close, last close below 200 SMA, MACD below negative threshold.
-short_setup = sma20 > close and close < sma200 and macd < signal and signal < -macd_threshold
-
-// Edge-triggered signals: fire once, on the first bar the setup becomes true,
-// so arrows and alerts don't repeat on every bar while the setup holds.
-long_signal  = long_setup and not long_setup[1]
-short_signal = short_setup and not short_setup[1]
+long_signal  = long_setup
+short_signal = short_setup
 
 // ═══════════════════════════════════════════════════════════
 // PLOTS
@@ -117,14 +108,11 @@ alertcondition(long_signal,  title='SMA+MACD Long',  message='20/200 SMA Cross +
 alertcondition(short_signal, title='SMA+MACD Short', message='20/200 SMA Cross + MACD — SHORT signal on {{ticker}} ({{interval}})')
 alertcondition(long_signal or short_signal, title='SMA+MACD Any', message='20/200 SMA Cross + MACD — signal on {{ticker}} ({{interval}})')
 
-// Bar color from MACD direction.
-barcolor(color=trend_up ? color.lime : trend_down ? color.red : color.gray)
-
 // ═══════════════════════════════════════════════════════════
 // INFO TABLE  (bottom-right)
 // ═══════════════════════════════════════════════════════════
 
-var table info = table.new(position.bottom_right, 2, 7,
+var table info = table.new(position.bottom_right, 2, 6,
      bgcolor     = color.new(TABLE_BG_C, 30),
      frame_width = 0)
 
@@ -152,7 +140,3 @@ if barstate.islast and show_table
     table.cell(info, 0, 5, 'MACD Signal',       text_color=TABLE_TEXT_C, text_size=size.normal)
     table.cell(info, 1, 5, str.tostring(signal, format.mintick),
                text_color=signal >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
-
-    table.cell(info, 0, 6, 'Squeeze',           text_color=TABLE_TEXT_C, text_size=size.normal)
-    table.cell(info, 1, 6, squeeze_state,
-               text_color=uptrend_squeeze ? LONG_C : downtrend_squeeze ? SHORT_C : NEUTRAL_C, text_size=size.normal)
