@@ -77,14 +77,14 @@ p1_long  = smma20 > smma200
 p1_short = smma20 < smma200
 
 // P2 — MACD histogram filter. Else skip entry.
-p2_long  = macd > signal and hist >= 2.5
-p2_short = macd < signal and hist <= -2.5
+p2_long  = hist >= 1.5
+p2_short =  hist <= -1.5
 
 // P3 — MACD histogram zero-line cross this candle.
 //      LONG: macd_line > macd_signal > 0
 //      SHORT: macd_line < macd_signal < 0
-p3_long  = macd > signal and signal > 0
-p3_short = macd < signal and signal < 0
+p3_long  =  signal > 0
+p3_short =  signal < 0
 
 long_setup  = p1_long and p2_long and p3_long
 short_setup = p1_short and p2_short and p3_short
@@ -118,13 +118,13 @@ plotshape(long_signal  and show_arrows, title='Long Signal',
      style=shape.triangleup, location=location.belowbar,
      color=color.new(LONG_C, 0),
      text='L', textcolor=color.new(LONG_C, 0),
-     size=size.tiny)
+     size=size.auto)
 
 plotshape(short_signal and show_arrows, title='Short Signal',
      style=shape.triangledown, location=location.abovebar,
      color=color.new(SHORT_C, 0),
      text='S', textcolor=color.new(SHORT_C, 0),
-     size=size.tiny)
+     size=size.auto)
 
 // ═══════════════════════════════════════════════════════════
 // ALERTS
