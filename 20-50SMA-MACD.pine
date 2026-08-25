@@ -27,12 +27,11 @@ sma_slow_len = input.int(200, 'Slow SMA Length',  minval=1, group='Moving Averag
 
 // ── MACD ────────────────────────────────────────────────────
 float  sourceInput  = input.source(close, 'Source', group='MACD')
-int    fastLenInput = input.int(12, 'Fast length',   1, group='MACD')
-int    slowLenInput = input.int(26, 'Slow length',   1, group='MACD')
+int    fastLenInput = input.int(20, 'Fast length',   1, group='MACD')
+int    slowLenInput = input.int(200, 'Slow length',   1, group='MACD')
 int    sigLenInput  = input.int(9,  'Signal length', 1, group='MACD')
 string oscTypeInput = input.string('EMA', 'Oscillator MA type', ['EMA', 'SMA'], group='MACD')
 string sigTypeInput = input.string('EMA', 'Signal MA type',     ['EMA', 'SMA'], group='MACD')
-float  macd_threshold = input.float(5.0, 'MACD Threshold', minval=0, group='MACD')
 
 // ── Display ──────────────────────────────────────────────────
 show_fast_sma = input.bool(true, 'Show 20 SMA', group='Display')
@@ -61,16 +60,28 @@ float maSlow = ma(sourceInput, slowLenInput, oscTypeInput)
 float macd   = maFast - maSlow
 float signal = ma(macd, sigLenInput, sigTypeInput)
 
-// Compute cross conditions globally so they execute on every bar.
-bool macdCrossUp   = ta.crossover(macd, signal)
-bool macdCrossDown = ta.crossunder(macd, signal)
+float hist = macd - signal
 
-// Long setup: 20 SMA above 200 SMA, MACD crosses above its signal line,
-// and the signal line is above the positive threshold.
-long_setup  = sma20 > sma200 and macdCrossUp and signal > macd_threshold
-// Short setup: 20 SMA below 200 SMA, MACD crosses below its signal line,
-// and the signal line is below the negative threshold.
-short_setup = sma20 < sma200 and macdCrossDown and signal < -macd_threshold
+// ═══════════════════════════════════════════════════════════
+// 3P ENTRY LOGIC
+// ═══════════════════════════════════════════════════════════
+
+// P1 — SMA trend alignment. Mismatch → skip entry.
+p1_long  = sma20 > sma200
+p1_short = sma20 < sma200
+
+// P2 — MACD histogram filter. Else skip entry.
+p2_long  = hist >= 2.0
+p2_short = hist <= -2.0
+
+// P3 — MACD histogram zero-line cross this candle.
+//      LONG: macd_line > macd_signal > 0
+//      SHORT: macd_line < macd_signal < 0
+p3_long  = macd > 0
+p3_short = macd < 0
+
+long_setup  = p1_long and p2_long and p3_long
+short_setup = p1_short and p2_short and p3_short
 
 long_signal  = long_setup
 short_signal = short_setup
