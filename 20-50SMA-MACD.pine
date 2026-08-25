@@ -71,24 +71,14 @@ p1_long  = sma20 > sma200
 p1_short = sma20 < sma200
 
 // P2 — MACD histogram filter. Else skip entry.
-<<<<<<< HEAD
 p2_long  = hist >= 2.0
 p2_short = hist <= -2.0
-=======
-p2_long  = macd > signal and hist >= 2.5
-p2_short = macd < signal and hist <= -2.5
->>>>>>> e7077051eecb10b254614374eb9d89b63444b346
 
 // P3 — MACD histogram zero-line cross this candle.
 //      LONG: macd_line > macd_signal > 0
 //      SHORT: macd_line < macd_signal < 0
-<<<<<<< HEAD
 p3_long  = macd > 0
 p3_short = macd < 0
-=======
-p3_long  = macd > signal and signal > 0
-p3_short = macd < signal and signal < 0
->>>>>>> e7077051eecb10b254614374eb9d89b63444b346
 
 long_setup  = p1_long and p2_long and p3_long
 short_setup = p1_short and p2_short and p3_short
