@@ -27,8 +27,8 @@ smma_slow_len = input.int(200, 'Slow SMMA Length',  minval=1, group='Moving Aver
 
 // ── MACD ────────────────────────────────────────────────────
 float  sourceInput  = input.source(close, 'Source', group='MACD')
-int    fastLenInput = input.int(12, 'Fast length',   1, group='MACD')
-int    slowLenInput = input.int(26, 'Slow length',   1, group='MACD')
+int    fastLenInput = input.int(20, 'Fast length',   1, group='MACD')
+int    slowLenInput = input.int(200, 'Slow length',   1, group='MACD')
 int    sigLenInput  = input.int(9,  'Signal length', 1, group='MACD')
 string oscTypeInput = input.string('EMA', 'Oscillator MA type', ['EMA', 'SMMA'], group='MACD')
 string sigTypeInput = input.string('EMA', 'Signal MA type',     ['EMA', 'SMMA'], group='MACD')
@@ -53,6 +53,7 @@ smma(float source, int length) =>
 
 smma20  = smma(close, smma_fast_len)
 smma200 = smma(close, smma_slow_len)
+smma_diff = smma20 - smma200
 
 // @function    Calculates an EMA or SMMA of a `source` series.
 ma(float source, int length, simple string maType) =>
@@ -65,6 +66,7 @@ float maFast = ma(sourceInput, fastLenInput, oscTypeInput)
 float maSlow = ma(sourceInput, slowLenInput, oscTypeInput)
 float macd   = maFast - maSlow
 float signal = ma(macd, sigLenInput, sigTypeInput)
+float macd_diff = macd - signal
 
 float hist = macd - signal
 
@@ -77,8 +79,8 @@ p1_long  = smma20 > smma200
 p1_short = smma20 < smma200
 
 // P2 — MACD histogram filter. Else skip entry.
-p2_long  = hist >= 1.5
-p2_short =  hist <= -1.5
+p2_long  = hist >= 2
+p2_short =  hist <= -2
 
 // P3 — MACD histogram zero-line cross this candle.
 //      LONG: macd_line > macd_signal > 0
@@ -141,7 +143,7 @@ alertcondition(long_signal or short_signal, title='SMMA+MACD Any', message='20/2
 // INFO TABLE  (bottom-right)
 // ═══════════════════════════════════════════════════════════
 
-var table info = table.new(position.bottom_right, 2, 6,
+var table info = table.new(position.bottom_right, 2, 4,
      bgcolor     = color.new(TABLE_BG_C, 30),
      frame_width = 0)
 
@@ -151,21 +153,13 @@ if barstate.islast and show_table
                text_color=long_setup ? LONG_C : short_setup ? SHORT_C : NEUTRAL_C, text_size=size.normal)
 
     table.cell(info, 0, 1, 'Close',             text_color=TABLE_TEXT_C, text_size=size.normal)
-    table.cell(info, 1, 1, str.tostring(close, format.mintick),
-               text_color=close >= smma200 ? LONG_C : SHORT_C, text_size=size.normal)
+    table.cell(info, 1, 1, str.tostring(close[1], format.mintick),
+               text_color=close[1] >= smma200 ? LONG_C : SHORT_C, text_size=size.normal)
 
-    table.cell(info, 0, 2, '20 SMMA',           text_color=TABLE_TEXT_C, text_size=size.normal)
-    table.cell(info, 1, 2, str.tostring(smma20, format.mintick),
-               text_color=smma20 >= smma200 ? LONG_C : SHORT_C, text_size=size.normal)
+    table.cell(info, 0, 2, 'SMMA Diff',         text_color=TABLE_TEXT_C, text_size=size.normal)
+    table.cell(info, 1, 2, str.tostring(smma_diff, format.mintick),
+               text_color=smma_diff >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
 
-    table.cell(info, 0, 3, '200 SMMA',          text_color=TABLE_TEXT_C, text_size=size.normal)
-    table.cell(info, 1, 3, str.tostring(smma200, format.mintick),
-               text_color=smma20 >= smma200 ? LONG_C : SHORT_C, text_size=size.normal)
-
-    table.cell(info, 0, 4, 'MACD',              text_color=TABLE_TEXT_C, text_size=size.normal)
-    table.cell(info, 1, 4, str.tostring(macd, format.mintick),
-               text_color=macd >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
-
-    table.cell(info, 0, 5, 'MACD Signal',       text_color=TABLE_TEXT_C, text_size=size.normal)
-    table.cell(info, 1, 5, str.tostring(signal, format.mintick),
-               text_color=signal >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
+    table.cell(info, 0, 3, 'MACD Diff',         text_color=TABLE_TEXT_C, text_size=size.normal)
+    table.cell(info, 1, 3, str.tostring(macd_diff, format.mintick),
+               text_color=macd_diff >= 0 ? LONG_C : SHORT_C, text_size=size.normal)
