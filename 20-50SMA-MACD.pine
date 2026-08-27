@@ -4,7 +4,7 @@
 //Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
 
 //@version=6
-indicator('20/200 SMMA Cross + MACD', overlay=true)
+indicator('20/200 SMA Cross + MACD', overlay=true)
 
 // ═══════════════════════════════════════════════════════════
 // COLOR CONSTANTS
@@ -12,8 +12,8 @@ indicator('20/200 SMMA Cross + MACD', overlay=true)
 const color LONG_C       = #22c55e   // bullish / up-trend
 const color SHORT_C      = #ef4444   // bearish / down-trend
 const color NEUTRAL_C    = color.gray
-const color FAST_SMMA_C  = #00ff00   // 20 SMMA (light green)
-const color SLOW_SMMA_C  = #ffea00   // 200 SMMA (thistle)
+const color FAST_SMA_C   = #00ff00   // 20 SMA (light green)
+const color SLOW_SMA_C   = #ffea00   // 200 SMA (thistle)
 const color TABLE_BG_C   = #0f172a   // info table background
 const color TABLE_TEXT_C = color.gray // info table labels
 
@@ -22,20 +22,20 @@ const color TABLE_TEXT_C = color.gray // info table labels
 // ═══════════════════════════════════════════════════════════
 
 // ── Moving Averages ─────────────────────────────────────────
-smma_fast_len = input.int(20,  'Fast SMMA Length',  minval=1, group='Moving Averages')
-smma_slow_len = input.int(200, 'Slow SMMA Length',  minval=1, group='Moving Averages')
+sma_fast_len  = input.int(20,  'Fast SMA Length',   minval=1, group='Moving Averages')
+sma_slow_len  = input.int(200, 'Slow SMA Length',   minval=1, group='Moving Averages')
 
 // ── MACD ────────────────────────────────────────────────────
 float  sourceInput  = input.source(close, 'Source', group='MACD')
 int    fastLenInput = input.int(20, 'Fast length',   1, group='MACD')
 int    slowLenInput = input.int(200, 'Slow length',   1, group='MACD')
 int    sigLenInput  = input.int(9,  'Signal length', 1, group='MACD')
-string oscTypeInput = input.string('EMA', 'Oscillator MA type', ['EMA', 'SMMA'], group='MACD')
-string sigTypeInput = input.string('EMA', 'Signal MA type',     ['EMA', 'SMMA'], group='MACD')
+string oscTypeInput = input.string('EMA', 'Oscillator MA type', ['EMA', 'SMA'], group='MACD')
+string sigTypeInput = input.string('EMA', 'Signal MA type',     ['EMA', 'SMA'], group='MACD')
 
 // ── Display ──────────────────────────────────────────────────
-show_fast_smma = input.bool(true, 'Show 20 SMMA', group='Display')
-show_slow_smma = input.bool(true, 'Show 200 SMMA', group='Display')
+show_fast_sma  = input.bool(true, 'Show 20 SMA',  group='Display')
+show_slow_sma  = input.bool(true, 'Show 200 SMA', group='Display')
 show_bg       = input.bool(true, 'Trend Background', group='Display')
 show_arrows   = input.bool(true, 'Signal Arrows',    group='Display')
 show_barcolor = input.bool(true, 'Bar Color',        group='Display')
@@ -45,21 +45,16 @@ show_table    = input.bool(true, 'Info Table',       group='Display')
 // CALCULATIONS
 // ═══════════════════════════════════════════════════════════
 
-// Smoothed Moving Average (SMMA).
-smma(float source, int length) =>
-    float _smma = 0.0
-    _smma := na(_smma[1]) ? ta.sma(source, length) : (_smma[1] * (length - 1) + source) / length
-    _smma
+// Simple Moving Average (SMA).
+sma20  = ta.sma(close, sma_fast_len)
+sma200 = ta.sma(close, sma_slow_len)
+sma_diff = sma20 - sma200
 
-smma20  = smma(close, smma_fast_len)
-smma200 = smma(close, smma_slow_len)
-smma_diff = smma20 - smma200
-
-// @function    Calculates an EMA or SMMA of a `source` series.
+// @function    Calculates an EMA or SMA of a `source` series.
 ma(float source, int length, simple string maType) =>
     switch maType
-        'EMA'  => ta.ema(source, length)
-        'SMMA' => smma(source, length)
+        'EMA' => ta.ema(source, length)
+        'SMA' => ta.sma(source, length)
 
 // MACD
 float maFast = ma(sourceInput, fastLenInput, oscTypeInput)
@@ -74,9 +69,9 @@ float hist = macd - signal
 // 3P ENTRY LOGIC
 // ═══════════════════════════════════════════════════════════
 
-// P1 — SMMA trend alignment. Mismatch → skip entry.
-p1_long  = close > smma20 and smma20 > smma200
-p1_short = close < smma20 and smma20 < smma200
+// P1 — SMA trend alignment. Mismatch → skip entry.
+p1_long  = close > sma20 and sma20 > sma200
+p1_short = close < sma20 and sma20 < sma200
 
 // P2 — MACD histogram filter. Else skip entry.
 p2_long  = hist > 1
@@ -103,16 +98,16 @@ bg_color = long_setup  ? color.new(LONG_C, 92)
          : na
 bgcolor(show_bg ? bg_color : na, title='Trend Background')
 
-// Bar coloring based on price vs 20/200 SMMAs.
-// Strong trend: price is on the same side of both SMMAs as the SMMA ordering.
-bar_color = close > smma20 and smma20 > smma200 ? color.new(LONG_C, 0)
-          : close < smma20 and smma20 < smma200 ? color.new(SHORT_C, 0)
+// Bar coloring based on price vs 20/200 SMAs.
+// Strong trend: price is on the same side of both SMAs as the SMA ordering.
+bar_color = close > sma20 and sma20 > sma200 ? color.new(LONG_C, 0)
+          : close < sma20 and sma20 < sma200 ? color.new(SHORT_C, 0)
           : color.new(NEUTRAL_C, 0)
-barcolor(show_barcolor ? bar_color : na, title='SMMA Bar Color')
+barcolor(show_barcolor ? bar_color : na, title='SMA Bar Color')
 
 // Moving averages: clean, thin lines.
-plot(show_fast_smma ? smma20 : na, title='20 SMMA', color=color.new(FAST_SMMA_C, 0), linewidth=2)
-plot(show_slow_smma ? smma200 : na, title='200 SMMA', color=color.new(SLOW_SMMA_C, 0), linewidth=3)
+plot(show_fast_sma ? sma20 : na, title='20 SMA', color=color.new(FAST_SMA_C, 0), linewidth=2)
+plot(show_slow_sma ? sma200 : na, title='200 SMA', color=color.new(SLOW_SMA_C, 0), linewidth=3)
 
 // Signal arrows with text labels on the triggering candle.
 plotshape(long_signal  and show_arrows, title='Long Signal',
@@ -134,9 +129,9 @@ plotshape(short_signal and show_arrows, title='Short Signal',
 // 'Signal Arrows' display toggle — users can mute the arrows but still
 // receive alerts.
 
-alertcondition(long_signal,  title='SMMA+MACD Long',  message='20/200 SMMA Cross + MACD — LONG signal on {{ticker}} ({{interval}})')
-alertcondition(short_signal, title='SMMA+MACD Short', message='20/200 SMMA Cross + MACD — SHORT signal on {{ticker}} ({{interval}})')
-alertcondition(long_signal or short_signal, title='SMMA+MACD Any', message='20/200 SMMA Cross + MACD — signal on {{ticker}} ({{interval}})')
+alertcondition(long_signal,  title='SMA+MACD Long',  message='20/200 SMA Cross + MACD — LONG signal on {{ticker}} ({{interval}})')
+alertcondition(short_signal, title='SMA+MACD Short', message='20/200 SMA Cross + MACD — SHORT signal on {{ticker}} ({{interval}})')
+alertcondition(long_signal or short_signal, title='SMA+MACD Any', message='20/200 SMA Cross + MACD — signal on {{ticker}} ({{interval}})')
 
 // ═══════════════════════════════════════════════════════════
 // INFO TABLE  (bottom-right)
@@ -153,10 +148,10 @@ if barstate.islast and show_table
 
     table.cell(info, 0, 1, 'Close',             text_color=TABLE_TEXT_C, text_size=size.auto)
     table.cell(info, 1, 1, str.tostring(close[1], format.mintick),
-               text_color=close[1] >= smma200 ? LONG_C : SHORT_C, text_size=size.auto)
+               text_color=close[1] >= sma200 ? LONG_C : SHORT_C, text_size=size.auto)
 
-    table.cell(info, 0, 2, 'SMMA Diff',         text_color=TABLE_TEXT_C, text_size=size.auto)
-    table.cell(info, 1, 2, str.tostring(smma_diff, format.mintick),
+    table.cell(info, 0, 2, 'SMA Diff',          text_color=TABLE_TEXT_C, text_size=size.auto)
+    table.cell(info, 1, 2, str.tostring(sma_diff, format.mintick),
                text_color=hist >= 0 ? LONG_C : SHORT_C, text_size=size.auto)
 
     table.cell(info, 0, 3, 'MACD Diff',         text_color=TABLE_TEXT_C, text_size=size.auto)
