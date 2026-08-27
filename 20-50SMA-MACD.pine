@@ -85,7 +85,7 @@ p2_short =  hist < -1
 // P3 — MACD histogram zero-line cross this candle.
 
 p3_long  =  macd > 5
-p3_short =  macd < 5
+p3_short =  macd < -5
 
 long_setup  = p1_long and p2_long and p3_long
 short_setup = p1_short and p2_short and p3_short
