@@ -41,6 +41,9 @@ show_arrows   = input.bool(true, 'Signal Arrows',    group='Display')
 show_barcolor = input.bool(true, 'Bar Color',        group='Display')
 show_table    = input.bool(true, 'Info Table',       group='Display')
 
+// ── Sessions ─────────────────────────────────────────────────
+show_sessions = input.bool(true, 'Show 4h Sessions', group='Sessions')
+
 // ═══════════════════════════════════════════════════════════
 // CALCULATIONS
 // ═══════════════════════════════════════════════════════════
@@ -132,6 +135,20 @@ plotshape(short_signal and show_arrows, title='Short Signal',
 alertcondition(long_signal,  title='SMA+MACD Long',  message='20/200 SMA Cross + MACD — LONG signal on {{ticker}} ({{interval}})')
 alertcondition(short_signal, title='SMA+MACD Short', message='20/200 SMA Cross + MACD — SHORT signal on {{ticker}} ({{interval}})')
 alertcondition(long_signal or short_signal, title='SMA+MACD Any', message='20/200 SMA Cross + MACD — signal on {{ticker}} ({{interval}})')
+
+// ═══════════════════════════════════════════════════════════
+// SESSIONS
+// ═══════════════════════════════════════════════════════════
+show_sessions = input.bool(true, 'Show 4h Sessions', group='Sessions')
+
+is_new_session = timeframe.change('240')
+
+if show_sessions and is_new_session
+    line.new(
+         x1 = bar_index, y1 = low,
+         x2 = bar_index, y2 = high,
+         color = color.new(color.gray, 50),
+         style = line.style_dotted, width = 1, extend = extend.both)
 
 // ═══════════════════════════════════════════════════════════
 // INFO TABLE  (bottom-right)
