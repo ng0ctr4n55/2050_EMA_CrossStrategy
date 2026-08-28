@@ -77,13 +77,13 @@ p1_long  = close > sma20 and sma20 > sma200
 p1_short = close < sma20 and sma20 < sma200
 
 // P2 — MACD histogram filter. Else skip entry.
-p2_long  = hist > 1
-p2_short =  hist < -1
+p2_long  = hist > 2
+p2_short =  hist < -2
 
 // P3 — MACD histogram zero-line cross this candle.
 
-p3_long  =  macd > 5
-p3_short =  macd < -5
+p3_long  =  macd > 10
+p3_short =  macd < -10
 
 long_setup  = p1_long and p2_long and p3_long
 short_setup = p1_short and p2_short and p3_short
