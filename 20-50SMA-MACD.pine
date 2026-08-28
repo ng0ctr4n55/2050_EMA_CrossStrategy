@@ -145,7 +145,7 @@ if show_sessions and is_new_session
     line.new(
          x1 = bar_index, y1 = low,
          x2 = bar_index, y2 = high,
-         color = color.new(color.gray, 50),
+         color = color.new(#ffffff, 0),
          style = line.style_dotted, width = 1, extend = extend.both)
 
 // ═══════════════════════════════════════════════════════════
