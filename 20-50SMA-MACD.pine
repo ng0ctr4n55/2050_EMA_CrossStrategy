@@ -41,6 +41,9 @@ show_arrows   = input.bool(true, 'Signal Arrows',    group='Display')
 show_barcolor = input.bool(true, 'Bar Color',        group='Display')
 show_table    = input.bool(true, 'Info Table',       group='Display')
 
+// ── Sessions ─────────────────────────────────────────────────
+show_sessions = input.bool(true, 'Show Daily Sessions', group='Sessions')
+
 // ═══════════════════════════════════════════════════════════
 // CALCULATIONS
 // ═══════════════════════════════════════════════════════════
@@ -136,9 +139,7 @@ alertcondition(long_signal or short_signal, title='SMA+MACD Any', message='20/20
 // ═══════════════════════════════════════════════════════════
 // SESSIONS
 // ═══════════════════════════════════════════════════════════
-show_sessions = input.bool(true, 'Show 4h Sessions', group='Sessions')
-
-is_new_session = timeframe.change('240')
+is_new_session = timeframe.change('D')
 
 if show_sessions and is_new_session
     line.new(
