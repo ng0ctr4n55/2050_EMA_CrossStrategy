@@ -41,9 +41,6 @@ show_arrows   = input.bool(true, 'Signal Arrows',    group='Display')
 show_barcolor = input.bool(true, 'Bar Color',        group='Display')
 show_table    = input.bool(true, 'Info Table',       group='Display')
 
-// ── Sessions ─────────────────────────────────────────────────
-show_sessions = input.bool(true, 'Show 4h Sessions', group='Sessions')
-
 // ═══════════════════════════════════════════════════════════
 // CALCULATIONS
 // ═══════════════════════════════════════════════════════════
