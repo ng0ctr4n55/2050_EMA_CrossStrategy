@@ -1,0 +1,333 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Disclaimer:
+//The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
+//Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
+
+//@version=6
+indicator('Supply & Demand Zones — Valid Structure + 2.5 RR Filter', overlay=true, max_lines_count=500, max_labels_count=500, max_boxes_count=500, max_bars_back=500)
+
+// ═══════════════════════════════════════════════════════════
+// COLOR CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const color LONG_C          = #22c55e   // bullish / demand
+const color SHORT_C         = #ef4444   // bearish / supply
+const color NEUTRAL_C       = color.gray
+const color DEMAND_FRESH_C  = color.new(#22c55e, 80)
+const color DEMAND_TESTED_C = color.new(#22c55e, 92)
+const color SUPPLY_FRESH_C  = color.new(#ef4444, 80)
+const color SUPPLY_TESTED_C = color.new(#ef4444, 92)
+const color BROKEN_ZONE_C   = color.new(color.gray, 90)
+const color TABLE_BG_C      = #0f172a
+const color TABLE_TEXT_C    = color.gray
+const color SMA200_C        = #f97316
+
+// ═══════════════════════════════════════════════════════════
+// INPUTS
+// ═══════════════════════════════════════════════════════════
+// ── Swing detection ─────────────────────────────────────────
+swingLen        = input.int(5, 'Swing Lookback', minval=2, maxval=50, group='Structure')
+// ── Zone detection ──────────────────────────────────────────
+baseCandles     = input.int(1, 'Base candles before impulse', minval=1, maxval=5, tooltip='Video uses 1 (the candle right before the impulse). Research suggests 1–3 tight candles.', group='Zones')
+impulseMult     = input.float(2.0, 'Impulse size (× ATR)', minval=0.5, step=0.1, tooltip='Candle range must be at least this multiple of ATR to count as an impulse.', group='Zones')
+minBodyRatio    = input.float(0.6, 'Min impulse body ratio', minval=0.0, maxval=1.0, step=0.05, tooltip='Body must be at least this % of the full candle range. Filters long-wick drift.', group='Zones')
+departureMult   = input.float(2.5, 'Min departure ratio (× base height)', minval=1.0, step=0.1, tooltip='Price must travel at least this multiple of the base height away from the zone to qualify.', group='Zones')
+atrLen          = input.int(14, 'ATR Length', minval=1, group='Zones')
+maxZones        = input.int(20, 'Max active zones', minval=5, maxval=100, group='Zones')
+zoneExtend      = input.int(120, 'Zone extension bars', minval=20, maxval=500, group='Zones')
+// ── Moving Averages ─────────────────────────────────────────
+sma200_len      = input.int(200, '200 SMA Length', minval=1, group='Moving Averages')
+// ── Filters ─────────────────────────────────────────────────
+minRR           = input.float(2.5, 'Minimum Risk/Reward', minval=1.0, step=0.1, group='Filters')
+useSma200       = input.bool(true, 'Require price above/below 200 SMA', group='Filters')
+maxTests        = input.int(2, 'Max zone tests before weak', minval=1, maxval=10, tooltip='Zones fade after this many retests. 1 = only fresh zones.', group='Filters')
+// ── Display ─────────────────────────────────────────────────
+showZones       = input.bool(true, 'Show Zones', group='Display')
+showSignals     = input.bool(true, 'Show Signals', group='Display')
+showStructure   = input.bool(true, 'Show Valid Swings', group='Display')
+showSma200      = input.bool(true, 'Show 200 SMA', group='Display')
+showTable       = input.bool(true, 'Info Table', group='Display')
+
+// ═══════════════════════════════════════════════════════════
+// 200 SMA
+// ═══════════════════════════════════════════════════════════
+sma200 = ta.sma(close, sma200_len)
+
+// ═══════════════════════════════════════════════════════════
+// STRUCTURE: valid highs/lows
+// Presenter's rule: a low is only "valid" if the move that formed
+// it broke the previous high.  Same logic inverted for highs.
+// ═══════════════════════════════════════════════════════════
+float swingHigh = ta.pivothigh(high, swingLen, swingLen)
+float swingLow  = ta.pivotlow(low, swingLen, swingLen)
+
+var float lastSwingHigh = high
+var float lastSwingLow  = low
+var float validLow      = low      // most recent low validated by a break of previous high
+var float validHigh     = high     // most recent high validated by a break of previous low
+var bool  isUpTrend     = true
+
+if not na(swingHigh)
+    lastSwingHigh := swingHigh
+
+if not na(swingLow)
+    lastSwingLow := swingLow
+
+// Trend flip logic based on the presenter's "valid low/high" rule.
+// A new swing low only becomes the valid low once price breaks the previous swing high.
+// Trend flips only on a break of the most recent valid low/high.
+if bar_index > swingLen
+    // Break above the previous high validates the most recent low and flips to uptrend.
+    if close > lastSwingHigh[1]
+        validLow := lastSwingLow
+        isUpTrend := true
+    // Break below the previous low validates the most recent high and flips to downtrend.
+    else if close < lastSwingLow[1]
+        validHigh := lastSwingHigh
+        isUpTrend := false
+
+// ═══════════════════════════════════════════════════════════
+// ZONE DETECTION
+// Zone = tight consolidation (base) immediately before a strong impulse.
+// Demand zones form in uptrends, supply zones in downtrends.
+// ═══════════════════════════════════════════════════════════
+float atr = ta.atr(atrLen)
+float candleBody = math.abs(close - open)
+float candleRange = high - low
+float bodyRatio = candleRange > 0 ? candleBody / candleRange : 0
+
+bool bigRange = candleRange >= impulseMult * atr
+bool strongBody = bodyRatio >= minBodyRatio
+bool isImpulseUp   = close > open and bigRange and strongBody
+bool isImpulseDown = close < open and bigRange and strongBody
+
+// Base range: the candle(s) immediately before the impulse.
+float baseTop    = ta.highest(high, baseCandles + 1)[1]
+float baseBottom = ta.lowest(low, baseCandles + 1)[1]
+float baseHeight = baseTop - baseBottom
+
+// Departure: how far price has moved away from the base since the impulse.
+float departureUp   = isImpulseUp   ? (close - baseTop)  / math.max(baseHeight, syminfo.mintick) : 0
+float departureDown = isImpulseDown ? (baseBottom - close) / math.max(baseHeight, syminfo.mintick) : 0
+
+bool qualifiesUp   = isImpulseUp   and departureUp   >= departureMult
+bool qualifiesDown = isImpulseDown and departureDown >= departureMult
+
+// Zone storage
+var array<float> zoneProximal  = array.new_float(0)   // entry edge
+var array<float> zoneDistal    = array.new_float(0)   // stop edge
+var array<bool>  zoneIsDemand  = array.new_bool(0)
+var array<bool>  zoneActive    = array.new_bool(0)
+var array<int>   zoneTests     = array.new_int(0)
+var array<int>   zoneStartBar  = array.new_int(0)
+var array<box>   zoneBoxes     = array.new_box(0)
+
+// Helper: refresh box geometry and appearance
+refreshZone(int idx) =>
+    box   b        = array.get(zoneBoxes, idx)
+    float prox     = array.get(zoneProximal, idx)
+    float dist     = array.get(zoneDistal, idx)
+    bool  demand   = array.get(zoneIsDemand, idx)
+    int   start    = array.get(zoneStartBar, idx)
+    int   tests    = array.get(zoneTests, idx)
+    int   end      = math.min(bar_index, start + zoneExtend)
+    box.set_left(b, start)
+    box.set_right(b, end)
+    box.set_top(b, math.max(prox, dist))
+    box.set_bottom(b, math.min(prox, dist))
+    color bg = demand ? (tests == 0 ? DEMAND_FRESH_C : DEMAND_TESTED_C) : (tests == 0 ? SUPPLY_FRESH_C : SUPPLY_TESTED_C)
+    box.set_bgcolor(b, bg)
+    box.set_border_color(b, demand ? LONG_C : SHORT_C)
+    box.set_border_width(b, 1)
+
+// Create a new zone
+addZone(bool demand, float prox, float dist, int startBar) =>
+    array.push(zoneProximal, prox)
+    array.push(zoneDistal,   dist)
+    array.push(zoneIsDemand, demand)
+    array.push(zoneActive,   true)
+    array.push(zoneTests,    0)
+    array.push(zoneStartBar, startBar)
+    array.push(zoneBoxes,    box.new(startBar, math.max(prox, dist), startBar, math.min(prox, dist),
+                                     bgcolor=demand ? DEMAND_FRESH_C : SUPPLY_FRESH_C,
+                                     border_color=demand ? LONG_C : SHORT_C,
+                                     border_width=1))
+    // Enforce max zones by dropping oldest active zone.
+    if array.size(zoneActive) > maxZones
+        int oldest = 0
+        for i = 1 to array.size(zoneActive) - 1
+            if array.get(zoneStartBar, i) < array.get(zoneStartBar, oldest)
+                oldest := i
+        if oldest < array.size(zoneBoxes)
+            box.delete(array.get(zoneBoxes, oldest))
+            array.remove(zoneProximal, oldest)
+            array.remove(zoneDistal, oldest)
+            array.remove(zoneIsDemand, oldest)
+            array.remove(zoneActive, oldest)
+            array.remove(zoneTests, oldest)
+            array.remove(zoneStartBar, oldest)
+            array.remove(zoneBoxes, oldest)
+
+// Proximal/distal convention:
+// Demand: proximal = top of base (buy limit), distal = bottom of base (stop below).
+// Supply: proximal = bottom of base (sell limit), distal = top of base (stop above).
+if qualifiesUp and isUpTrend and showZones
+    float prox = baseTop
+    float dist = baseBottom
+    addZone(true, prox, dist, bar_index)
+
+if qualifiesDown and not isUpTrend and showZones
+    float prox = baseBottom
+    float dist = baseTop
+    addZone(false, prox, dist, bar_index)
+
+// Manage existing zones: test counting, invalidation, extension.
+var int zonesCount = 0
+if array.size(zoneActive) > 0
+    zonesCount := array.size(zoneActive)
+    int currentSize = array.size(zoneActive)
+    for i = currentSize - 1 to 0
+        if i < array.size(zoneActive)
+            bool active = array.get(zoneActive, i)
+            bool demand = array.get(zoneIsDemand, i)
+            float prox = array.get(zoneProximal, i)
+            float dist = array.get(zoneDistal, i)
+            int   tests = array.get(zoneTests, i)
+
+            if active
+                // Price entered the zone but did not close through it.
+                bool inZone = low <= math.max(prox, dist) and high >= math.min(prox, dist)
+                bool closedThrough = demand ? close < math.min(prox, dist) : close > math.max(prox, dist)
+
+                if inZone and not closedThrough
+                    tests := tests + 1
+                    array.set(zoneTests, i, tests)
+
+                // Zone is broken if price closes beyond the distal line.
+                if closedThrough
+                    array.set(zoneActive, i, false)
+                    box.set_bgcolor(array.get(zoneBoxes, i), BROKEN_ZONE_C)
+                    box.set_border_color(array.get(zoneBoxes, i), color.gray)
+                else
+                    refreshZone(i)
+
+// ═══════════════════════════════════════════════════════════
+// ENTRY SIGNALS
+// Long:  price re-enters a fresh demand zone in an uptrend, RR >= minRR.
+// Short: price re-enters a fresh supply zone in a downtrend, RR >= minRR.
+// ═══════════════════════════════════════════════════════════
+bool longSignal  = false
+bool shortSignal = false
+float longSl     = na
+float longTp     = na
+float shortSl    = na
+float shortTp    = na
+
+float targetHigh = lastSwingHigh
+float targetLow  = lastSwingLow
+
+if showSignals and array.size(zoneActive) > 0
+    int zoneCount = array.size(zoneActive)
+    for i = 0 to zoneCount - 1
+        bool active = array.get(zoneActive, i)
+        bool demand = array.get(zoneIsDemand, i)
+        float prox = array.get(zoneProximal, i)
+        float dist = array.get(zoneDistal, i)
+        int   tests = array.get(zoneTests, i)
+
+        bool fresh = tests <= maxTests
+
+        if active and demand and isUpTrend and fresh and (not useSma200 or close > sma200)
+            bool inZone = low <= math.max(prox, dist) and high >= math.min(prox, dist)
+            float sl = math.min(prox, dist) - (atr * 0.3)
+            float tp = targetHigh
+            float risk = close - sl
+            float reward = tp - close
+            float rr = risk > 0 ? reward / risk : 0
+            if inZone and rr >= minRR and not longSignal
+                longSignal := true
+                longSl := sl
+                longTp := tp
+
+        if active and not demand and not isUpTrend and fresh and (not useSma200 or close < sma200)
+            bool inZone = low <= math.max(prox, dist) and high >= math.min(prox, dist)
+            float sl = math.max(prox, dist) + (atr * 0.3)
+            float tp = targetLow
+            float risk = sl - close
+            float reward = close - tp
+            float rr = risk > 0 ? reward / risk : 0
+            if inZone and rr >= minRR and not shortSignal
+                shortSignal := true
+                shortSl := sl
+                shortTp := tp
+
+// Only trigger on the first bar of the signal.
+bool longTrigger  = longSignal and not longSignal[1]
+bool shortTrigger = shortSignal and not shortSignal[1]
+
+// ═══════════════════════════════════════════════════════════
+// PLOTS
+// ═══════════════════════════════════════════════════════════
+plot(showSma200 ? sma200 : na, title='200 SMA', color=color.new(SMA200_C, 0), linewidth=2)
+
+plotshape(showStructure and not na(swingHigh), title='Swing High',
+     style=shape.triangledown, location=location.abovebar,
+     color=SHORT_C, size=size.tiny)
+plotshape(showStructure and not na(swingLow), title='Swing Low',
+     style=shape.triangleup, location=location.belowbar,
+     color=LONG_C, size=size.tiny)
+
+plotshape(longTrigger and showSignals, title='Long Signal',
+     style=shape.triangleup, location=location.belowbar,
+     color=color.new(LONG_C, 0), text='L', textcolor=LONG_C, size=size.normal)
+plotshape(shortTrigger and showSignals, title='Short Signal',
+     style=shape.triangledown, location=location.abovebar,
+     color=color.new(SHORT_C, 0), text='S', textcolor=SHORT_C, size=size.normal)
+
+bgcolor(showStructure ? (isUpTrend ? color.new(LONG_C, 92) : color.new(SHORT_C, 92)) : na, title='Trend Background')
+
+// ═══════════════════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════════════════
+alertcondition(longTrigger,  title='SDZ Long',  message='Supply/Demand Zone — LONG signal on {{ticker}} ({{interval}})')
+alertcondition(shortTrigger, title='SDZ Short', message='Supply/Demand Zone — SHORT signal on {{ticker}} ({{interval}})')
+alertcondition(longTrigger or shortTrigger, title='SDZ Any', message='Supply/Demand Zone — signal on {{ticker}} ({{interval}})')
+
+// ═══════════════════════════════════════════════════════════
+// INFO TABLE
+// ═══════════════════════════════════════════════════════════
+var table info = table.new(position.bottom_right, 2, 7,
+     bgcolor     = color.new(TABLE_BG_C, 30),
+     frame_width = 0)
+
+if barstate.islast and showTable
+    table.cell(info, 0, 0, 'Trend', text_color=TABLE_TEXT_C, text_size=size.auto)
+    table.cell(info, 1, 0, isUpTrend ? 'UP' : 'DOWN',
+               text_color=isUpTrend ? LONG_C : SHORT_C, text_size=size.auto)
+
+    table.cell(info, 0, 1, 'Valid Low', text_color=TABLE_TEXT_C, text_size=size.auto)
+    table.cell(info, 1, 1, str.tostring(validLow, format.mintick),
+               text_color=LONG_C, text_size=size.auto)
+
+    table.cell(info, 0, 2, 'Valid High', text_color=TABLE_TEXT_C, text_size=size.auto)
+    table.cell(info, 1, 2, str.tostring(validHigh, format.mintick),
+               text_color=SHORT_C, text_size=size.auto)
+
+    table.cell(info, 0, 3, 'Active Zones', text_color=TABLE_TEXT_C, text_size=size.auto)
+    table.cell(info, 1, 3, str.tostring(zonesCount),
+               text_color=TABLE_TEXT_C, text_size=size.auto)
+
+    table.cell(info, 0, 4, 'Signal', text_color=TABLE_TEXT_C, text_size=size.auto)
+    string sigText = longSignal ? 'LONG' : shortSignal ? 'SHORT' : '—'
+    color  sigCol  = longSignal ? LONG_C : shortSignal ? SHORT_C : NEUTRAL_C
+    table.cell(info, 1, 4, sigText, text_color=sigCol, text_size=size.auto)
+
+    table.cell(info, 0, 5, 'RR Filter', text_color=TABLE_TEXT_C, text_size=size.auto)
+    float liveRR = longSignal and longSl != 0 ? (longTp - close) / (close - longSl)
+                 : shortSignal and shortSl != 0 ? (close - shortTp) / (shortSl - close)
+                 : na
+    table.cell(info, 1, 5, liveRR != 0 ? str.tostring(liveRR, '#.#') : '—',
+               text_color=TABLE_TEXT_C, text_size=size.auto)
+
+    table.cell(info, 0, 6, '200 SMA', text_color=TABLE_TEXT_C, text_size=size.auto)
+    table.cell(info, 1, 6, str.tostring(sma200, format.mintick),
+               text_color=close >= sma200 ? LONG_C : SHORT_C, text_size=size.auto)

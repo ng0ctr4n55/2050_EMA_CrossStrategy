@@ -1,0 +1,131 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Disclaimer:
+// The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only.
+// It is not professional advice, nor should it be relied upon as such.
+// Viewers are encouraged to consult qualified professionals before making decisions based on the material presented.
+// While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
+
+//@version=6
+
+indicator(
+     "4H Range - 5M Scalping",
+     shorttitle="4H/5M Scalp",
+     overlay=true,
+     max_lines_count=500
+     )
+
+// ---------------------------------------------------------------------------
+// INPUTS
+// ---------------------------------------------------------------------------
+
+if not (timeframe.isminutes and timeframe.multiplier == 5)
+    runtime.error("Please run this script on a 5-minute chart.")
+
+tz = input.string("America/New_York", title="Timezone for daily 4H range", group="Range Settings")
+rangeHours = input.int(4, minval=1, maxval=12, title="First range candle size (hours)", group="Range Settings")
+
+// ---------------------------------------------------------------------------
+// DAILY 4-HOUR RANGE IN NY TIME
+// ---------------------------------------------------------------------------
+// The strategy uses the high/low of the first 4-hour candle of the current NY day.
+// We accumulate the high/low from the start of the day until the first rangeHours
+// have passed, then freeze the range for the rest of the day.
+
+barsPerRange = int(rangeHours * 60 / timeframe.multiplier)
+
+nyYear   = year(time, tz)
+nyMonth  = month(time, tz)
+nyDay    = dayofmonth(time, tz)
+currentDate = nyYear * 10000 + nyMonth * 100 + nyDay
+isNewDay = currentDate != currentDate[1] or na(currentDate[1])
+
+var float rangeHigh = na
+var float rangeLow  = na
+var bool  rangeSet  = false
+var int   barsIntoDay = 0
+
+if isNewDay
+    rangeHigh   := high
+    rangeLow    := low
+    rangeSet    := false
+    barsIntoDay := 0
+else
+    barsIntoDay += 1
+
+if not rangeSet
+    if barsIntoDay < barsPerRange
+        rangeHigh := math.max(rangeHigh, high)
+        rangeLow  := math.min(rangeLow, low)
+    else
+        rangeSet := true
+
+// ---------------------------------------------------------------------------
+// PLOT THE RANGE
+// ---------------------------------------------------------------------------
+
+pHigh = plot(rangeSet ? rangeHigh : na, "Range High", color=color.new(color.blue, 0), linewidth=1, style=plot.style_linebr)
+pLow  = plot(rangeSet ? rangeLow  : na, "Range Low",  color=color.new(color.blue, 0), linewidth=1, style=plot.style_linebr)
+fill(pHigh, pLow, title="4H Range Zone", color=color.new(color.blue, 90))
+
+// ---------------------------------------------------------------------------
+// BREAKOUT / FAILED-BREAKOUT STATE
+// ---------------------------------------------------------------------------
+// Wait for a 5M candle to close outside the range, then wait for price to close
+// back inside.  Trade the trap direction:
+//   - close above range high, then re-enter  -> short
+//   - close below range low,  then re-enter  -> long
+
+var bool  brokeHigh   = false
+var bool  brokeLow    = false
+var float extremeHigh = na
+var float extremeLow  = na
+
+if isNewDay
+    brokeHigh   := false
+    brokeLow    := false
+    extremeHigh := na
+    extremeLow  := na
+
+shortSignal = false
+longSignal  = false
+
+if rangeSet
+    // New breakouts
+    if not brokeHigh and close > rangeHigh
+        brokeHigh   := true
+        extremeHigh := high
+
+    if not brokeLow and close < rangeLow
+        brokeLow   := true
+        extremeLow := low
+
+    // Track the extreme of the breakout move while price remains outside
+    if brokeHigh
+        extremeHigh := math.max(nz(extremeHigh, high), high)
+
+    if brokeLow
+        extremeLow := math.min(nz(extremeLow, low), low)
+
+    // Signal on re-entry
+    if brokeHigh and close <= rangeHigh and close >= rangeLow
+        risk = extremeHigh - close
+        if risk > 0
+            shortSignal := true
+            brokeHigh   := false
+            extremeHigh := na
+
+    if brokeLow and close >= rangeLow and close <= rangeHigh
+        risk = close - extremeLow
+        if risk > 0
+            longSignal := true
+            brokeLow   := false
+            extremeLow := na
+
+// ---------------------------------------------------------------------------
+// VISUALS
+// ---------------------------------------------------------------------------
+
+plotshape(shortSignal, title="Short Setup", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small, text="S")
+plotshape(longSignal,  title="Long Setup",  location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small, text="L")
+
+bgcolor(rangeSet ? color.new(color.gray, 90) : na, title="Active 4H Range Period")
