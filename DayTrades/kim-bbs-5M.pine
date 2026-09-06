@@ -1,96 +1,162 @@
 //@version=6
-indicator('Kim Bollinger Buy/Sell Bands', overlay = true)
+indicator("Kim Bollinger Buy/Sell Bands MTF", overlay=true, max_labels_count=500)
 
-// Inputs
-length = input.int(20, 'Length')
-mult = input.float(2.0, 'Std Dev', step = 0.1)
+//=====================================================
+// INPUTS
+//=====================================================
 
-// ===== BUY BAND =====
-// High EMA Bollinger
-basisHighEMA = ta.ema(high, length)
-devHighEMA = ta.stdev(high, length) * mult
-upperHighEMA = basisHighEMA + devHighEMA
-lowerHighEMA = basisHighEMA - devHighEMA
+length = input.int(20, "BB Length", minval=1)
+mult = input.float(2.0, "BB StdDev", step=0.1)
+showSignals = input.bool(true, "Show Buy/Sell Signals")
+showTable = input.bool(true, "Show Trend Table")
 
-// High WMA Bollinger
-basisHighWMA = ta.wma(high, length)
-devHighWMA = ta.stdev(high, length) * mult
-upperHighWMA = basisHighWMA + devHighWMA
-lowerHighWMA = basisHighWMA - devHighWMA
+//=====================================================
+// BUY BAND (HIGH EMA + HIGH WMA)
+//=====================================================
 
-// ===== SELL BAND =====
-// Low EMA Bollinger
-basisLowEMA = ta.ema(low, length)
-devLowEMA = ta.stdev(low, length) * mult
-upperLowEMA = basisLowEMA + devLowEMA
-lowerLowEMA = basisLowEMA - devLowEMA
+highEMA = ta.ema(high, length)
+highWMA = ta.wma(high, length)
+highDev = ta.stdev(high, length) * mult
 
-// Low WMA Bollinger
-basisLowWMA = ta.wma(low, length)
-devLowWMA = ta.stdev(low, length) * mult
-upperLowWMA = basisLowWMA + devLowWMA
-lowerLowWMA = basisLowWMA - devLowWMA
+highEMAUpper = highEMA + highDev
+highEMALower = highEMA - highDev
 
-// ===== BUY ZONE (GREEN) =====
-buyBand1 = plot(lowerHighEMA, color = color.new(color.green, 0), linewidth = 1)
-buyBand2 = plot(lowerHighWMA, color = color.new(color.green, 0), linewidth = 1)
+highWMAUpper = highWMA + highDev
+highWMALower = highWMA - highDev
 
-fill(buyBand1, buyBand2, color = color.new(color.green, 75))
+//=====================================================
+// SELL BAND (LOW EMA + LOW WMA)
+//=====================================================
 
-// ===== SELL ZONE (RED) =====
-sellBand1 = plot(upperLowEMA, color = color.new(color.red, 0), linewidth = 1)
-sellBand2 = plot(upperLowWMA, color = color.new(color.red, 0), linewidth = 1)
+lowEMA = ta.ema(low, length)
+lowWMA = ta.wma(low, length)
+lowDev = ta.stdev(low, length) * mult
 
-fill(sellBand1, sellBand2, color = color.new(color.red, 75))
+lowEMAUpper = lowEMA + lowDev
+lowEMALower = lowEMA - lowDev
 
-// ===== TREND MA =====
+lowWMAUpper = lowWMA + lowDev
+lowWMALower = lowWMA - lowDev
+
+//=====================================================
+// PLOTS
+//=====================================================
+
+buyLine1 = plot(highEMALower, title="Buy Band EMA", color=color.new(color.lime, 0), linewidth=1)
+buyLine2 = plot(highWMALower, title="Buy Band WMA", color=color.new(color.lime, 0), linewidth=1)
+
+sellLine1 = plot(lowEMAUpper, title="Sell Band EMA", color=color.new(color.red, 0), linewidth=1)
+sellLine2 = plot(lowWMAUpper, title="Sell Band WMA", color=color.new(color.red, 0), linewidth=1)
+
+fill(buyLine1, buyLine2, color.new(color.lime, 80))
+fill(sellLine1, sellLine2, color.new(color.red, 80))
+
+//=====================================================
+// TREND MA
+//=====================================================
+
 ma20 = ta.sma(close, 20)
+maColor = ma20 > ma20[1] ? color.lime : color.red
 
-maColor = ma20 > ma20[1] ? color.green : color.red
+plot(ma20, title="20 SMA", color=maColor, linewidth=2)
 
-plot(ma20, title = '20 MA', color = maColor, linewidth = 2)
+//=====================================================
+// MTF TREND
+//=====================================================
 
-// =========================
-// MTF TREND TABLE
-// =========================
+h1MA = request.security(syminfo.tickerid, "60", ta.sma(close, 20))
+h1Prev = request.security(syminfo.tickerid, "60", ta.sma(close, 20)[1])
 
-// Get 20 SMA from higher timeframes
-h1_ma     = request.security(syminfo.tickerid, "60", ta.sma(close, 20))
-h1_ma_prev= request.security(syminfo.tickerid, "60", ta.sma(close, 20)[1])
+h4MA = request.security(syminfo.tickerid, "240", ta.sma(close, 20))
+h4Prev = request.security(syminfo.tickerid, "240", ta.sma(close, 20)[1])
 
-h4_ma     = request.security(syminfo.tickerid, "240", ta.sma(close, 20))
-h4_ma_prev= request.security(syminfo.tickerid, "240", ta.sma(close, 20)[1])
+dMA = request.security(syminfo.tickerid, "D", ta.sma(close, 20))
+dPrev = request.security(syminfo.tickerid, "D", ta.sma(close, 20)[1])
 
-d_ma      = request.security(syminfo.tickerid, "D", ta.sma(close, 20))
-d_ma_prev = request.security(syminfo.tickerid, "D", ta.sma(close, 20)[1])
+h1Bull = h1MA > h1Prev
+h4Bull = h4MA > h4Prev
+dBull = dMA > dPrev
 
-// Trend Logic
-h1Trend = h1_ma > h1_ma_prev ? "UP" : "DOWN"
-h4Trend = h4_ma > h4_ma_prev ? "UP" : "DOWN"
-dTrend  = d_ma > d_ma_prev ? "UP" : "DOWN"
+bullTrend = h1Bull and h4Bull and dBull
+bearTrend = not h1Bull and not h4Bull and not dBull
 
-// Colors
-h1Color = h1Trend == "UP" ? color.lime : color.red
-h4Color = h4Trend == "UP" ? color.lime : color.red
-dColor  = dTrend  == "UP" ? color.lime : color.red
+//=====================================================
+// ATR
+//=====================================================
 
-// Create Table
-var table trendTable = table.new(
-     position.top_right,
-     2,
-     4,
-     border_width=1)
+atr14 = ta.atr(14)
 
-// Update table on last bar only
-if barstate.islast
-    table.cell(trendTable, 0, 0, "TIMEFRAME", bgcolor=color.black, text_color=color.white)
-    table.cell(trendTable, 1, 0, "TREND", bgcolor=color.black, text_color=color.white)
+//=====================================================
+// CANDLE PATTERNS
+//=====================================================
+
+body = math.abs(close - open)
+
+bullHammer = close > open and (math.min(open, close) - low) > body * 1.5
+bearStar = close < open and (high - math.max(open, close)) > body * 1.5
+
+bullEngulf = close > open and close[1] < open[1] and close > open[1] and open < close[1]
+bearEngulf = close < open and close[1] > open[1] and close < open[1] and open > close[1]
+
+strongBull = close > open and body > atr14 * 0.30
+strongBear = close < open and body > atr14 * 0.30
+
+//=====================================================
+// BAND TOUCHES
+//=====================================================
+
+greenTop = math.max(highEMALower, highWMALower)
+greenBot = math.min(highEMALower, highWMALower)
+
+redTop = math.max(lowEMAUpper, lowWMAUpper)
+redBot = math.min(lowEMAUpper, lowWMAUpper)
+
+touchGreen = low <= greenTop and low >= greenBot
+touchRed = high >= redBot and high <= redTop
+
+//=====================================================
+// SIGNALS
+//=====================================================
+
+longSignal = bullTrend and ma20 > ma20[1] and touchGreen and (bullHammer or bullEngulf or strongBull)
+shortSignal = bearTrend and ma20 < ma20[1] and touchRed and (bearStar or bearEngulf or strongBear)
+
+//=====================================================
+// SIGNAL PLOTS
+//=====================================================
+
+plotshape(showSignals and longSignal, title="BUY", style=shape.triangleup, location=location.belowbar, color=color.lime, size=size.small, text="BUY")
+
+plotshape(showSignals and shortSignal, title="SELL", style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, text="SELL")
+
+//=====================================================
+// TREND TABLE
+//=====================================================
+
+var table trendTable = table.new(position.top_right, 2, 5, border_width=1)
+
+if barstate.islast and showTable
+    table.cell(trendTable, 0, 0, "TF", bgcolor=color.black, text_color=color.white)
+    table.cell(trendTable, 1, 0, "Trend", bgcolor=color.black, text_color=color.white)
 
     table.cell(trendTable, 0, 1, "1H")
-    table.cell(trendTable, 1, 1, h1Trend, bgcolor=h1Color, text_color=color.white)
+    table.cell(trendTable, 1, 1, h1Bull ? "UP" : "DOWN", bgcolor=h1Bull ? color.green : color.red, text_color=color.white)
 
     table.cell(trendTable, 0, 2, "4H")
-    table.cell(trendTable, 1, 2, h4Trend, bgcolor=h4Color, text_color=color.white)
+    table.cell(trendTable, 1, 2, h4Bull ? "UP" : "DOWN", bgcolor=h4Bull ? color.green : color.red, text_color=color.white)
 
-    table.cell(trendTable, 0, 3, "DAILY")
-    table.cell(trendTable, 1, 3, dTrend, bgcolor=dColor, text_color=color.white)
+    table.cell(trendTable, 0, 3, "DAY")
+    table.cell(trendTable, 1, 3, dBull ? "UP" : "DOWN", bgcolor=dBull ? color.green : color.red, text_color=color.white)
+
+    biasText = bullTrend ? "BULL" : bearTrend ? "BEAR" : "MIXED"
+    biasColor = bullTrend ? color.green : bearTrend ? color.red : color.orange
+
+    table.cell(trendTable, 0, 4, "BIAS")
+    table.cell(trendTable, 1, 4, biasText, bgcolor=biasColor, text_color=color.white)
+
+//=====================================================
+// ALERTS
+//=====================================================
+
+alertcondition(longSignal, title="BUY Signal", message="BUY signal detected")
+alertcondition(shortSignal, title="SELL Signal", message="SELL signal detected")
