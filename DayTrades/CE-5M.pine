@@ -1,0 +1,56 @@
+//@version=6
+// // This is a redesign of the Chandelier Exit indicator. It removes stupid transitions between Chandelier Exit' states and highlights initial points for both lines.
+// This indicator was originally developed by Charles Le Beau and popularized by Dr . Alexander Elder in his book "Come Into My Trading Room: A Complete Guide to Trading" (2002).
+// In short, this is a trailing stop-loss based on the Average True Range (ATR).
+//
+// If "Heikin Ashi for calculation" is checked, then ATR and buy/sell signals are calculated based on heikin ashi candles.
+// You don't need to change bar style to heikin ashi.
+indicator("Chandelier Exit", shorttitle="CE", overlay=true)
+
+length = input.int(title="ATR Period", defval=1)
+mult = input.float(title="ATR Multiplier", step=0.1, defval=1.85)
+showLabelText = input.bool(title="Sell/Buy Label Text", defval=true)
+useHeikinAshi = input.bool(title="Heikin Ashi for calculation", defval=true)
+showSma50 = input.bool(title="Show 50 SMA", defval=true)
+showSma200 = input.bool(title="Show 200 SMA", defval=true)
+
+_atr(length, _h, _l, _c) =>
+    // like ta.atr(length), but takes the the high, low, close as parameters
+    trueRange = na(_h[1])? _h-_l : math.max(math.max(_h - _l, math.abs(_h - _c[1])), math.abs(_l - _c[1]))
+    ta.rma(trueRange, length)
+
+haTicker = ticker.heikinashi(syminfo.tickerid)
+_o = useHeikinAshi ? request.security(haTicker, timeframe.period, open)  : open
+_h = useHeikinAshi ? request.security(haTicker, timeframe.period, high)  : high
+_l = useHeikinAshi ? request.security(haTicker, timeframe.period, low)   : low
+_c = useHeikinAshi ? request.security(haTicker, timeframe.period, close) : close
+
+atrValue = mult * _atr(length, _h, _l, _c)
+
+longStop = ta.highest(_h, length) - atrValue
+longStopPrev = nz(longStop[1], longStop)
+longStop := _c[1] > longStopPrev ? math.max(longStop, longStopPrev) : longStop
+
+shortStop = ta.lowest(_l, length) + atrValue
+shortStopPrev = nz(shortStop[1], shortStop)
+shortStop := _c[1] < shortStopPrev ? math.min(shortStop, shortStopPrev) : shortStop
+
+var int dir = 1
+dir := _c > shortStopPrev ? 1 : _c < longStopPrev ? -1 : dir
+
+buySignal = dir == 1 and dir[1] == -1
+plotshape(buySignal ? longStop : na, title="Buy Label", text="B", location=location.belowbar, style=shape.labelup, size=size.tiny, color=color.new(color.green, 0), textcolor=color.white)
+
+sellSignal = dir == -1 and dir[1] == 1
+plotshape(sellSignal ? shortStop : na, title="Sell Label", text="S", location=location.abovebar, style=shape.labeldown, size=size.tiny, color=color.new(color.red, 0), textcolor=color.white)
+
+// 50 SMA and 200 SMA
+sma50 = ta.sma(_c, 50)
+sma200 = ta.sma(_c, 200)
+plot(showSma50 ? sma50 : na, title="50 SMA", color=color.new(color.blue, 0), linewidth=2)
+plot(showSma200 ? sma200 : na, title="200 SMA", color=color.new(color.orange, 0), linewidth=2)
+
+changeCond = dir != dir[1]
+alertcondition(changeCond, title="Alert: CE Direction Change", message="Chandelier Exit has changed direction!")
+alertcondition(buySignal, title="Alert: CE Buy", message="Chandelier Exit Buy!")
+alertcondition(sellSignal, title="Alert: CE Sell", message="Chandelier Exit Sell!")
