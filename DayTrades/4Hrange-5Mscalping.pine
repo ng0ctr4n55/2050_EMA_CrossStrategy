@@ -7,9 +7,20 @@
 
 //@version=6
 
+// US Opening Candle Box — 5M Entry Indicator
+// Based on the rule-based intraday strategy from:
+// https://www.youtube.com/watch?v=BlbRke-Fgyk
+//
+// Core idea:
+//   - Draw a box around the first US-session hourly candle (high/low).
+//   - Trade reactions to the box top / bottom / midline on a lower timeframe.
+//   - Never chase the breakout; wait for a pullback (retest) to the broken boundary.
+//   - Targets are 1×, 2× or 3× the box height.
+// This script is intended to run on a 5-minute chart.
+
 indicator(
-     "4H Range - 5M Scalping",
-     shorttitle="4H/5M Scalp",
+     "US Opening Candle Box — 5M Entries",
+     shorttitle="US Open Box",
      overlay=true,
      max_lines_count=500
      )
@@ -21,15 +32,19 @@ indicator(
 if not (timeframe.isminutes and timeframe.multiplier == 5)
     runtime.error("Please run this script on a 5-minute chart.")
 
-tz = input.string("America/New_York", title="Timezone for daily 4H range", group="Range Settings")
-rangeHours = input.int(4, minval=1, maxval=12, title="First range candle size (hours)", group="Range Settings")
+tz = input.string("America/New_York", title="Timezone for opening candle", group="Range Settings")
+rangeHours = input.int(1, minval=1, maxval=4, title="Opening candle size (hours)", group="Range Settings", tooltip="1 hour = first US session hourly candle. The strategy waits for this candle to close before trading its breakout/retest.")
+
+showMid = input.bool(true, "Show 50% midline (decision line)", group="Visuals", tooltip="Above midline = buyers have the edge; below = sellers have the edge.")
+showExtensions = input.bool(true, "Show 1×/2×/3× box-height extensions", group="Visuals", tooltip="Projected take-profit levels in the direction of the breakout.")
+showInsideSignals = input.bool(true, "Show inside-box reversal signals", group="Signals", tooltip="Long lower wicks at the bottom / rejection candles at the top while price is still inside the box.")
+wickBodyRatio = input.float(2.0, "Wick-to-body ratio for inside-box entries", group="Signals", minval=1.0, step=0.5, tooltip="Minimum lower/upper wick size relative to the candle body.")
 
 // ---------------------------------------------------------------------------
-// DAILY 4-HOUR RANGE IN NY TIME
+// OPENING CANDLE BOX
 // ---------------------------------------------------------------------------
-// The strategy uses the high/low of the first 4-hour candle of the current NY day.
-// We accumulate the high/low from the start of the day until the first rangeHours
-// have passed, then freeze the range for the rest of the day.
+// Accumulate the high/low of the first `rangeHours` of the NY session.
+// Once that window closes, the box is frozen for the rest of the day.
 
 barsPerRange = int(rangeHours * 60 / timeframe.multiplier)
 
@@ -59,73 +74,104 @@ if not rangeSet
     else
         rangeSet := true
 
-// ---------------------------------------------------------------------------
-// PLOT THE RANGE
-// ---------------------------------------------------------------------------
-
-pHigh = plot(rangeSet ? rangeHigh : na, "Range High", color=color.new(color.blue, 0), linewidth=1, style=plot.style_linebr)
-pLow  = plot(rangeSet ? rangeLow  : na, "Range Low",  color=color.new(color.blue, 0), linewidth=1, style=plot.style_linebr)
-fill(pHigh, pLow, title="4H Range Zone", color=color.new(color.blue, 90))
+boxHeight = rangeSet ? rangeHigh - rangeLow : na
+midLine   = rangeSet ? (rangeHigh + rangeLow) / 2 : na
 
 // ---------------------------------------------------------------------------
-// BREAKOUT / FAILED-BREAKOUT STATE
+// BREAKOUT + RETEST STATE
 // ---------------------------------------------------------------------------
-// Wait for a 5M candle to close outside the range, then wait for price to close
-// back inside.  Trade the trap direction:
-//   - close above range high, then re-enter  -> short
-//   - close below range low,  then re-enter  -> long
+// Wait for price to close outside the box, then wait for a pullback to the
+// broken boundary. Enter in the direction of the breakout:
+//   - close above range high  -> pullback to top  -> long
+//   - close below range low   -> pullback to bottom -> short
 
-var bool  brokeHigh   = false
-var bool  brokeLow    = false
-var float extremeHigh = na
-var float extremeLow  = na
+var bool brokeHigh    = false
+var bool brokeLow     = false
+var bool pullbackHigh = false
+var bool pullbackLow  = false
 
 if isNewDay
-    brokeHigh   := false
-    brokeLow    := false
-    extremeHigh := na
-    extremeLow  := na
+    brokeHigh    := false
+    brokeLow     := false
+    pullbackHigh := false
+    pullbackLow  := false
 
-shortSignal = false
 longSignal  = false
+shortSignal = false
 
 if rangeSet
-    // New breakouts
+    // New breakouts. Latest breakout direction takes precedence.
     if not brokeHigh and close > rangeHigh
-        brokeHigh   := true
-        extremeHigh := high
+        brokeHigh    := true
+        brokeLow     := false
+        pullbackHigh := false
+        pullbackLow  := false
 
     if not brokeLow and close < rangeLow
-        brokeLow   := true
-        extremeLow := low
+        brokeLow     := true
+        brokeHigh    := false
+        pullbackLow  := false
+        pullbackHigh := false
 
-    // Track the extreme of the breakout move while price remains outside
-    if brokeHigh
-        extremeHigh := math.max(nz(extremeHigh, high), high)
+    // Pullback to the broken boundary
+    if brokeHigh and not pullbackHigh
+        pullbackHigh := low <= rangeHigh
 
-    if brokeLow
-        extremeLow := math.min(nz(extremeLow, low), low)
+    if brokeLow and not pullbackLow
+        pullbackLow := high >= rangeLow
 
-    // Signal on re-entry
-    if brokeHigh and close <= rangeHigh and close >= rangeLow
-        risk = extremeHigh - close
-        if risk > 0
-            shortSignal := true
-            brokeHigh   := false
-            extremeHigh := na
+    // Retest entry: close back beyond the boundary in the breakout direction
+    if brokeHigh and pullbackHigh and close > rangeHigh
+        longSignal   := true
+        brokeHigh    := false
+        pullbackHigh := false
 
-    if brokeLow and close >= rangeLow and close <= rangeHigh
-        risk = close - extremeLow
-        if risk > 0
-            longSignal := true
-            brokeLow   := false
-            extremeLow := na
+    if brokeLow and pullbackLow and close < rangeLow
+        shortSignal := true
+        brokeLow    := false
+        pullbackLow := false
+
+    // Inside-box reversal entries (optional)
+    if showInsideSignals and not (brokeHigh or brokeLow)
+        bodySize   = math.abs(close - open)
+        lowerWick  = math.min(open, close) - low
+        upperWick  = high - math.max(open, close)
+        nearBottom = low <= rangeLow + boxHeight * 0.10
+        nearTop    = high >= rangeHigh - boxHeight * 0.10
+
+        isBullWick = lowerWick > wickBodyRatio * bodySize and close > open
+        isBearWick = upperWick > wickBodyRatio * bodySize and close < open
+
+        longSignal  := longSignal  or (nearBottom and isBullWick)
+        shortSignal := shortSignal or (nearTop    and isBearWick)
 
 // ---------------------------------------------------------------------------
 // VISUALS
 // ---------------------------------------------------------------------------
 
-plotshape(shortSignal, title="Short Setup", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small, text="S")
-plotshape(longSignal,  title="Long Setup",  location=location.belowbar, color=color.green, style=shape.triangleup, size=size.small, text="L")
+pHigh = plot(rangeSet ? rangeHigh : na, "Box Top", color=color.new(color.blue, 0), linewidth=1, style=plot.style_linebr)
+pLow  = plot(rangeSet ? rangeLow  : na, "Box Bottom", color=color.new(color.blue, 0), linewidth=1, style=plot.style_linebr)
+fill(pHigh, pLow, title="Opening Candle Box", color=color.new(color.blue, 90))
 
-bgcolor(rangeSet ? color.new(color.gray, 90) : na, title="Active 4H Range Period")
+plot(showMid and rangeSet ? midLine : na, "Midline (Decision Line)", color=color.new(color.orange, 0), linewidth=1, style=plot.style_linebr)
+
+// Projected take-profit levels (1×, 2×, 3× box height)
+plot(showExtensions and rangeSet ? rangeHigh + boxHeight     : na, "Long TP1 (+1×)", color=color.new(color.green, 0), linewidth=1, style=plot.style_linebr)
+plot(showExtensions and rangeSet ? rangeHigh + 2 * boxHeight : na, "Long TP2 (+2×)", color=color.new(color.green, 0), linewidth=1, style=plot.style_linebr)
+plot(showExtensions and rangeSet ? rangeHigh + 3 * boxHeight : na, "Long TP3 (+3×)", color=color.new(color.green, 0), linewidth=1, style=plot.style_linebr)
+
+plot(showExtensions and rangeSet ? rangeLow - boxHeight     : na, "Short TP1 (−1×)", color=color.new(color.red, 0), linewidth=1, style=plot.style_linebr)
+plot(showExtensions and rangeSet ? rangeLow - 2 * boxHeight : na, "Short TP2 (−2×)", color=color.new(color.red, 0), linewidth=1, style=plot.style_linebr)
+plot(showExtensions and rangeSet ? rangeLow - 3 * boxHeight : na, "Short TP3 (−3×)", color=color.new(color.red, 0), linewidth=1, style=plot.style_linebr)
+
+plotshape(longSignal,  title="Long Setup",  location=location.belowbar, color=color.green, style=shape.triangleup,   size=size.small, text="L")
+plotshape(shortSignal, title="Short Setup", location=location.abovebar, color=color.red,   style=shape.triangledown, size=size.small, text="S")
+
+bgcolor(rangeSet ? color.new(color.gray, 90) : na, title="Active Opening Range Period")
+
+// ---------------------------------------------------------------------------
+// ALERTS
+// ---------------------------------------------------------------------------
+
+alertcondition(longSignal,  "US Open Box — Long",  "US Opening Candle Box: Long setup triggered on {{ticker}}")
+alertcondition(shortSignal, "US Open Box — Short", "US Opening Candle Box: Short setup triggered on {{ticker}}")
