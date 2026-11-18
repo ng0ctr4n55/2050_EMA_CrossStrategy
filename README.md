@@ -1,15 +1,15 @@
 # 2050 EMA CrossStrategy Collection
 
-A set of Pine Script v6 trading strategies and indicators for TradingView, focused on EMA crossovers with momentum and trend confirmations.
+Pine Script v6 trading strategies and indicators for TradingView, built around EMA crossovers, Bollinger Bands, and intraday range setups.
 
 ## Files
 
 | File | Type | Description |
 |------|------|-------------|
-| `2050EMA.pine` | Strategy | EMA 20/50 cross with Bollinger Bands, designed for weekly charts |
-| `20EMA-100EMA-supertrend.pine` | Indicator | 20/100 EMA + SuperTrend — pullback signal with info table |
-| `20EMA-100EMA-supertrend-strategy.pine` | Strategy | 20/100 EMA + SuperTrend pullback strategy with ATR stop/target |
-| `qullamaggie_breakout_setup1.pine` | Indicator | Qullamaggie breakout setup — prior move, consolidation, bull backdrop |
+| `2050EMA.pine` | Strategy | Weekly EMA 20/50 cross with Bollinger Bands and long/short/both direction filter |
+| `2050EMA-indicator.pine` | Indicator | Weekly EMA 20/50 cross overlay with Bollinger Bands and crossover alerts |
+| `50-200SMA-MACD.pine` | Indicator | 5M/4H scalping overlay: first 4-hour range of the NY day, failed-breakout trap signals |
+| `DayTrades/5M-4Hscalping.pine` | Indicator | Same 5M/4H scalping overlay, now with configurable 50 SMA and 200 SMA |
 
 ## Quick Start (TradingView)
 
@@ -25,33 +25,33 @@ A set of Pine Script v6 trading strategies and indicators for TradingView, focus
 - **Timeframe**: Weekly
 - **Entry**: EMA 20 crosses above EMA 50
 - **Exit**: Opposite cross
-- **Filter**: Bollinger Bands
-
-### 20EMA-100EMA-SuperTrend — Pullback Strategy
-- **Entry (Long)**: Price > 100 EMA and Price < SuperTrend line
-- **Entry (Short)**: Price < 100 EMA and Price > SuperTrend line
-- **Exit**: Price reverts back across the SuperTrend line, or ATR stop-loss / take-profit
-- **Risk**: ATR-based stop loss (1.5× ATR) and take profit (2.0× ATR)
+- **Filter**: Bollinger Bands; choose Long, Short, or Both in settings
 
 ## Indicators
 
-### 20EMA-100EMA-SuperTrend — 3-Condition Confirmation
-Combines three conditions for entry signals:
-1. **20 EMA vs 100 EMA** — trend direction
-2. **Price vs 20 EMA** — short-term momentum
-3. **SuperTrend** — trend-following filter
+### 2050EMA-indicator
+- Weekly chart overlay
+- Plots EMA 20 and EMA 50
+- Bullish/bearish crossover shapes and alerts
+- Bollinger Bands background coloring
 
-- **Long**: 20 EMA > 100 EMA, Price > 20 EMA, SuperTrend UP
-- **Short**: 20 EMA < 100 EMA, Price < 20 EMA, SuperTrend DOWN
-- Displays an info table (bottom-right) showing all 3 condition statuses
-- Trend-aligned background colouring
+### 50-200SMA-MACD / 5M-4H Scalping
+- **Timeframe**: 5-minute
+- Uses the high/low of the first 4-hour candle of the NY session as the daily range
+- Signals a short when price breaks above the range then closes back inside
+- Signals a long when price breaks below the range then closes back inside
+- Visual range zone and S/L plot shapes
 
-### Qullamaggie Breakout Setup 1
-Based on Kristjan Kullamägi's flag/continuation breakout setup:
-- Prior big move detection
-- ATR compression (consolidation)
-- Higher lows in consolidation
-- Bull backdrop (fast EMA > slow EMA)
+### DayTrades/5M-4Hscalping
+- Same 5M/4H failed-breakout logic as above
+- Added configurable **50 SMA** and **200 SMA** overlays for trend reference
+- Toggle each SMA on/off and adjust length in the "SMAs" input group
+
+## Recent Changes
+
+- Added 50 SMA and 200 SMA plots to `DayTrades/5M-4Hscalping.pine`
+- Removed legacy `20-50SMA-MACD.pine` and `qullamaggie_breakout_setup1.pine`
+- Added new standalone `50-200SMA-MACD.pine` 5M/4H scalping indicator
 
 ## Video Walkthrough
 - [2050EMA Strategy Explanation](https://youtu.be/cGd2FPyhacI)
