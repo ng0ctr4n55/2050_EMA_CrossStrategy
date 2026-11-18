@@ -160,5 +160,5 @@ if barstate.islast and show_table
                text_color = hist >= 0 ? LONG_C : SHORT_C, text_size = size.auto)
 
     table.cell(info, 0, 4, '50 vs 200', text_color = TABLE_TEXT_C, text_size = size.auto)
-    table.cell(info, 1, 4, str.tostring(sma50 - sma200, format.mintick),
+    table.cell(info, 1, 4, str.tostring((sma50 - sma200) / sma200 * 100, format.mintick) + '%',
                text_color = sma50 >= sma200 ? LONG_C : SHORT_C, text_size = size.auto)
