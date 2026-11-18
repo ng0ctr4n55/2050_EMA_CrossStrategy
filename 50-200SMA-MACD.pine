@@ -1,131 +1,164 @@
 // This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
 // Disclaimer:
-// The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only.
-// It is not professional advice, nor should it be relied upon as such.
-// Viewers are encouraged to consult qualified professionals before making decisions based on the material presented.
-// While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
+//The content shared on this channel reflects personal opinions and interpretations intended for educational and informational purposes only. It is not professional advice, nor should it be relied upon as such.
+//Viewers are encouraged to consult qualified professionals before making decisions based on the material presented. While every effort is made to ensure accuracy, the creator makes no guarantees regarding completeness, reliability, or applicability to individual circumstances.
 
 //@version=6
+indicator('50/200 SMA Cross + MACD', overlay = true)
 
-indicator(
-     "4H Range - 5M Scalping",
-     shorttitle = "4H/5M Scalp",
-     overlay = true,
-     max_lines_count = 500
-     )
+// ═══════════════════════════════════════════════════════════
+// COLOR CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const color LONG_C = #22c55e   // bullish / up-trend
+const color SHORT_C = #ef4444   // bearish / down-trend
+const color NEUTRAL_C = color.gray
+const color SLOW_SMA_C = #ffea00   // 50 SMA
+const color LONG_TERM_SMA_C = color.orange // 200 SMA
+const color TABLE_BG_C = #0f172a   // info table background
+const color TABLE_TEXT_C = color.gray // info table labels
 
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════
 // INPUTS
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════
 
-if not (timeframe.isminutes and timeframe.multiplier == 5)
-    runtime.error("Please run this script on a 5-minute chart.")
+// ── Moving Averages ─────────────────────────────────────────
+sma_slow_len = input.int(50, 'Slow SMA Length', minval = 1, group = 'Moving Averages')
+sma_long_len = input.int(200, 'Long SMA Length', minval = 1, group = 'Moving Averages')
 
-tz = input.string("America/New_York", title = "Timezone for daily 4H range", group = "Range Settings")
-rangeHours = input.int(4, minval = 1, maxval = 12, title = "First range candle size (hours)", group = "Range Settings")
+// ── MACD ────────────────────────────────────────────────────
+float sourceInput = input.source(close, 'Source', group = 'MACD')
+int fastLenInput = input.int(20, 'Fast length', 1, group = 'MACD')
+int slowLenInput = input.int(50, 'Slow length', 1, group = 'MACD')
+int sigLenInput = input.int(9, 'Signal length', 1, group = 'MACD')
+string oscTypeInput = input.string('EMA', 'Oscillator MA type', ['EMA', 'SMA'], group = 'MACD')
+string sigTypeInput = input.string('EMA', 'Signal MA type', ['EMA', 'SMA'], group = 'MACD')
 
-// ---------------------------------------------------------------------------
-// DAILY 4-HOUR RANGE IN NY TIME
-// ---------------------------------------------------------------------------
-// The strategy uses the high/low of the first 4-hour candle of the current NY day.
-// We accumulate the high/low from the start of the day until the first rangeHours
-// have passed, then freeze the range for the rest of the day.
+// ── Display ──────────────────────────────────────────────────
+show_slow_sma = input.bool(true, 'Show 50 SMA', group = 'Display')
+show_long_sma = input.bool(true, 'Show 200 SMA', group = 'Display')
+show_bg = input.bool(true, 'Trend Background', group = 'Display')
+show_arrows = input.bool(true, 'Signal Arrows', group = 'Display')
+show_barcolor = input.bool(true, 'Bar Color', group = 'Display')
+show_table = input.bool(true, 'Info Table', group = 'Display')
 
-barsPerRange = int(rangeHours * 60 / timeframe.multiplier)
 
-nyYear = year(time, tz)
-nyMonth = month(time, tz)
-nyDay = dayofmonth(time, tz)
-currentDate = nyYear * 10000 + nyMonth * 100 + nyDay
-isNewDay = currentDate != currentDate[1] or na(currentDate[1])
+// ═══════════════════════════════════════════════════════════
+// CALCULATIONS
+// ═══════════════════════════════════════════════════════════
 
-var float rangeHigh = na
-var float rangeLow = na
-var bool rangeSet = false
-var int barsIntoDay = 0
+// Simple Moving Average (SMA).
+sma50 = ta.sma(close, sma_slow_len)
+sma200 = ta.sma(close, sma_long_len)
 
-if isNewDay
-    rangeHigh := high
-    rangeLow := low
-    rangeSet := false
-    barsIntoDay := 0
-else
-    barsIntoDay += 1
+// @function    Calculates an EMA or SMA of a `source` series.
+ma(float source, int length, simple string maType) =>
+    switch maType
+        'EMA' => ta.ema(source, length)
+        'SMA' => ta.sma(source, length)
 
-if not rangeSet
-    if barsIntoDay < barsPerRange
-        rangeHigh := math.max(rangeHigh, high)
-        rangeLow := math.min(rangeLow, low)
-    else
-        rangeSet := true
+// MACD
+float maFast = ma(sourceInput, fastLenInput, oscTypeInput)
+float maSlow = ma(sourceInput, slowLenInput, oscTypeInput)
+float macd = maFast - maSlow
+float signal = ma(macd, sigLenInput, sigTypeInput)
+float hist = macd - signal
 
-// ---------------------------------------------------------------------------
-// PLOT THE RANGE
-// ---------------------------------------------------------------------------
+// ═══════════════════════════════════════════════════════════
+// ENTRY LOGIC
+// ═══════════════════════════════════════════════════════════
 
-pHigh = plot(rangeSet ? rangeHigh : na, "Range High", color = color.new(color.blue, 0), linewidth = 1, style = plot.style_linebr)
-pLow = plot(rangeSet ? rangeLow : na, "Range Low", color = color.new(color.blue, 0), linewidth = 1, style = plot.style_linebr)
-fill(pHigh, pLow, title = "4H Range Zone", color = color.new(color.blue, 90))
+// P0 — Price above/below 50 SMA.
+p0_long = close > sma50
+p0_short = close < sma50
 
-// ---------------------------------------------------------------------------
-// BREAKOUT / FAILED-BREAKOUT STATE
-// ---------------------------------------------------------------------------
-// Wait for a 5M candle to close outside the range, then wait for price to close
-// back inside.  Trade the trap direction:
-//   - close above range high, then re-enter  -> short
-//   - close below range low,  then re-enter  -> long
+// P1 — Price above/below 200 SMA.
+p1_long = close > sma200
+p1_short = close < sma200
 
-var bool brokeHigh = false
-var bool brokeLow = false
-var float extremeHigh = na
-var float extremeLow = na
+// P2 — 50 SMA above/below 200 SMA by 0.15%.
+p2_long = sma50 > sma200 * 1.0015
+p2_short = sma50 < sma200 * 0.9985
 
-if isNewDay
-    brokeHigh := false
-    brokeLow := false
-    extremeHigh := na
-    extremeLow := na
+// P3 — MACD histogram positive/negative.
+p3_long = hist > 0
+p3_short = hist < 0
 
-shortSignal = false
-longSignal = false
+long_setup = p0_long and p1_long and p2_long and p3_long
+short_setup = p0_short and p1_short and p2_short and p3_short
 
-if rangeSet
-    // New breakouts
-    if not brokeHigh and close > rangeHigh
-        brokeHigh := true
-        extremeHigh := high
+long_signal = long_setup
+short_signal = short_setup
 
-    if not brokeLow and close < rangeLow
-        brokeLow := true
-        extremeLow := low
+// ═══════════════════════════════════════════════════════════
+// PLOTS
+// ═══════════════════════════════════════════════════════════
 
-    // Track the extreme of the breakout move while price remains outside
-    if brokeHigh
-        extremeHigh := math.max(nz(extremeHigh, high), high)
+// Trend background — green in long setup, red in short setup.
+bg_color = long_setup ? color.new(LONG_C, 92)
+         : short_setup ? color.new(SHORT_C, 92)
+         : na
+bgcolor(show_bg ? bg_color : na, title = 'Trend Background')
 
-    if brokeLow
-        extremeLow := math.min(nz(extremeLow, low), low)
+// Bar coloring based on price vs 50/200 SMAs.
+// Strong trend: price is on the same side of both SMAs as the SMA ordering.
+bar_color = close > sma50 and sma50 > sma200 ? color.new(LONG_C, 0)
+          : close < sma50 and sma50 < sma200 ? color.new(SHORT_C, 0)
+          : color.new(NEUTRAL_C, 0)
+barcolor(show_barcolor ? bar_color : na, title = 'SMA Bar Color')
 
-    // Signal on re-entry
-    if brokeHigh and close <= rangeHigh and close >= rangeLow
-        risk = extremeHigh - close
-        if risk > 0
-            shortSignal := true
-            brokeHigh := false
-            extremeHigh := na
+// Moving averages: clean, thin lines.
+plot(show_slow_sma ? sma50 : na, title = '50 SMA', color = color.new(SLOW_SMA_C, 0), linewidth = 3)
+plot(show_long_sma ? sma200 : na, title = '200 SMA', color = color.new(LONG_TERM_SMA_C, 0), linewidth = 3)
 
-    if brokeLow and close >= rangeLow and close <= rangeHigh
-        risk = close - extremeLow
-        if risk > 0
-            longSignal := true
-            brokeLow := false
-            extremeLow := na
+// Signal arrows with text labels on the triggering candle.
+plotshape(long_signal and show_arrows, title = 'Long Signal',
+     style = shape.triangleup, location = location.belowbar,
+     color = color.new(LONG_C, 0),
+     text = 'L', textcolor = color.new(LONG_C, 0),
+     size = size.auto)
 
-// ---------------------------------------------------------------------------
-// VISUALS
-// ---------------------------------------------------------------------------
+plotshape(short_signal and show_arrows, title = 'Short Signal',
+     style = shape.triangledown, location = location.abovebar,
+     color = color.new(SHORT_C, 0),
+     text = 'S', textcolor = color.new(SHORT_C, 0),
+     size = size.auto)
 
-plotshape(shortSignal, title = "Short Setup", location = location.abovebar, color = color.red, style = shape.triangledown, size = size.small, text = "S")
-plotshape(longSignal, title = "Long Setup", location = location.belowbar, color = color.green, style = shape.triangleup, size = size.small, text = "L")
+// ═══════════════════════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════════════════════
+// alertcondition fires whenever the signal is true, regardless of the
+// 'Signal Arrows' display toggle — users can mute the arrows but still
+// receive alerts.
 
-bgcolor(rangeSet ? color.new(color.gray, 90) : na, title = "Active 4H Range Period")
+alertcondition(long_signal, title = 'SMA+MACD Long', message = '50/200 SMA Cross + MACD — LONG signal on {{ticker}} ({{interval}})')
+alertcondition(short_signal, title = 'SMA+MACD Short', message = '50/200 SMA Cross + MACD — SHORT signal on {{ticker}} ({{interval}})')
+alertcondition(long_signal or short_signal, title = 'SMA+MACD Any', message = '50/200 SMA Cross + MACD — signal on {{ticker}} ({{interval}})')
+
+// ═══════════════════════════════════════════════════════════
+// INFO TABLE  (bottom-right)
+// ═══════════════════════════════════════════════════════════
+
+var table info = table.new(position.bottom_right, 2, 5,
+     bgcolor = color.new(TABLE_BG_C, 30),
+     frame_width = 0)
+
+if barstate.islast and show_table
+    table.cell(info, 0, 0, 'Signal', text_color = TABLE_TEXT_C, text_size = size.auto)
+    table.cell(info, 1, 0, long_setup ? 'LONG' : short_setup ? 'SHORT' : '—',
+               text_color = long_setup ? LONG_C : short_setup ? SHORT_C : NEUTRAL_C, text_size = size.auto)
+
+    table.cell(info, 0, 1, 'Close vs 50', text_color = TABLE_TEXT_C, text_size = size.auto)
+    table.cell(info, 1, 1, str.tostring(close - sma50, format.mintick),
+               text_color = close >= sma50 ? LONG_C : SHORT_C, text_size = size.auto)
+
+    table.cell(info, 0, 2, 'Close vs 200', text_color = TABLE_TEXT_C, text_size = size.auto)
+    table.cell(info, 1, 2, str.tostring(close - sma200, format.mintick),
+               text_color = close >= sma200 ? LONG_C : SHORT_C, text_size = size.auto)
+
+    table.cell(info, 0, 3, 'MACD Hist', text_color = TABLE_TEXT_C, text_size = size.auto)
+    table.cell(info, 1, 3, str.tostring(hist, format.mintick),
+               text_color = hist >= 0 ? LONG_C : SHORT_C, text_size = size.auto)
+
+    table.cell(info, 0, 4, '50 vs 200', text_color = TABLE_TEXT_C, text_size = size.auto)
+    table.cell(info, 1, 4, str.tostring(sma50 - sma200, format.mintick),
+               text_color = sma50 >= sma200 ? LONG_C : SHORT_C, text_size = size.auto)

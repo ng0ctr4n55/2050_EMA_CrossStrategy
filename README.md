@@ -8,8 +8,8 @@ Pine Script v6 trading strategies and indicators for TradingView, built around E
 |------|------|-------------|
 | `2050EMA.pine` | Strategy | Weekly EMA 20/50 cross with Bollinger Bands and long/short/both direction filter |
 | `2050EMA-indicator.pine` | Indicator | Weekly EMA 20/50 cross overlay with Bollinger Bands and crossover alerts |
-| `50-200SMA-MACD.pine` | Indicator | 5M/4H scalping overlay: first 4-hour range of the NY day, failed-breakout trap signals |
-| `DayTrades/5M-4Hscalping.pine` | Indicator | Same 5M/4H scalping overlay, now with configurable 50 SMA and 200 SMA |
+| `50-200SMA-MACD.pine` | Indicator | 50/200 SMA trend filter with MACD histogram confirmation |
+| `DayTrades/5M-4Hscalping.pine` | Indicator | 5M/4H scalping overlay: first 4-hour range of the NY day, failed-breakout trap signals |
 
 ## Quick Start (TradingView)
 
@@ -35,12 +35,12 @@ Pine Script v6 trading strategies and indicators for TradingView, built around E
 - Bullish/bearish crossover shapes and alerts
 - Bollinger Bands background coloring
 
-### 50-200SMA-MACD / 5M-4H Scalping
-- **Timeframe**: 5-minute
-- Uses the high/low of the first 4-hour candle of the NY session as the daily range
-- Signals a short when price breaks above the range then closes back inside
-- Signals a long when price breaks below the range then closes back inside
-- Visual range zone and S/L plot shapes
+### 50-200SMA-MACD
+- Plots the **50 SMA** and **200 SMA** with trend-based bar coloring
+- **Long signal**: `close > 50 SMA`, `close > 200 SMA`, `50 SMA > 200 SMA` by **0.15%**, and **MACD histogram > 0**
+- **Short signal**: the exact opposite conditions
+- Real-time info table shows `Close vs 50`, `Close vs 200`, `MACD Hist`, and `50 vs 200` differentials
+- Long/short signal arrows and alert conditions included
 
 ### DayTrades/5M-4Hscalping
 - Same 5M/4H failed-breakout logic as above
@@ -49,9 +49,14 @@ Pine Script v6 trading strategies and indicators for TradingView, built around E
 
 ## Recent Changes
 
+- Refactored `50-200SMA-MACD.pine` to a pure 50/200 SMA + MACD histogram strategy:
+  - Removed the 20 SMA and all related inputs/plots/bar-color logic
+  - Long entry requires `close > 50 SMA`, `close > 200 SMA`, `50 SMA > 200 SMA` by 0.15%, and `MACD hist > 0`
+  - Short entry uses the inverse conditions
+  - Info table now displays `Close vs 50`, `Close vs 200`, `MACD Hist`, and `50 vs 200`
+  - Removed dead code (`sma_diff`, duplicated `macd_diff`) and fixed alert messages
 - Added 50 SMA and 200 SMA plots to `DayTrades/5M-4Hscalping.pine`
 - Removed legacy `20-50SMA-MACD.pine` and `qullamaggie_breakout_setup1.pine`
-- Added new standalone `50-200SMA-MACD.pine` 5M/4H scalping indicator
 
 ## Video Walkthrough
 - [2050EMA Strategy Explanation](https://youtu.be/cGd2FPyhacI)
