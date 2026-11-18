@@ -13,7 +13,7 @@ const color LONG_C = #22c55e   // bullish / up-trend
 const color SHORT_C = #ef4444   // bearish / down-trend
 const color NEUTRAL_C = color.gray
 const color SLOW_SMA_C = #ffea00   // 50 SMA
-const color LONG_TERM_SMA_C = color.orange // 200 SMA
+const color LONG_TERM_SMA_C = color.red // 200 SMA
 const color TABLE_BG_C = #0f172a   // info table background
 const color TABLE_TEXT_C = color.gray // info table labels
 
